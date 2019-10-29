@@ -1,5 +1,16 @@
 Revision history for IO-Async
 
+0.17:   CHANGES:
+         * Added Stream->close_when_empty and ->close_now. Added docs
+         * Added OS abstractions of socketpair() and pipe()
+         * Many documentation changes and updates
+
+        BUGFIXES:
+         * Properly handle stream read/write errors; close immediately rather
+           than deferring until empty.
+         * Various CPAN testers somketest bug fixes
+         * Fixed http://rt.cpan.org/Ticket/Display.html?id=38476
+
 0.16    ADDITIONS:
          * Loop->requeue_timer()
          * Magic constructor in IO::Async::Loop which tries to find the best

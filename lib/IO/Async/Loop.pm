@@ -7,9 +7,12 @@ package IO::Async::Loop;
 
 use strict;
 
-our $VERSION = '0.16';
+our $VERSION = '0.17';
 
 use Carp;
+
+use Socket;
+use IO::Socket;
 
 # Never sleep for more than 1 second if a signal proxy is registered, to avoid
 # a borderline race condition.
@@ -46,7 +49,25 @@ C<IO::Async::Loop> - core loop of the C<IO::Async> framework
 
  my $loop = IO::Async::Loop->new();
 
- $loop->add( ... );
+ $loop->enqueue_timer(
+    delay => 10,
+    code  => sub { print "10 seconds have passed\n" },
+ );
+
+ $loop->add( IO::Async::Stream->new(
+    read_handle => \*STDIN,
+
+    on_read => sub {
+       my ( $self, $buffref, $closed ) = @_;
+
+       if( $$buffref =~ s/^(.*)\n// ) {
+          print "You typed a line $1\n";
+          return 1;
+       }
+
+       return 0;
+    },
+ );
 
  $loop->loop_forever();
 
@@ -324,7 +345,7 @@ The name of the signal to attach to. This should be a bare name like C<TERM>.
 
 =item $code
 
-A CODE reference to the handling function.
+A CODE reference to the handling callback.
 
 =back
 
@@ -513,8 +534,8 @@ sub open_child
 =head2 $loop->run_child( %params )
 
 This method creates a new child process to run the given code block or command,
-captures its STDOUT and STDERR streams, and passes them to the given callback
-function. For more detail see the C<run_child()> method on the
+captures its STDOUT and STDERR streams, and passes them to the given
+continuation. For more detail see the C<run_child()> method on the
 L<IO::Async::ChildManager> class.
 
 =cut
@@ -608,7 +629,7 @@ The time to consider as now; defaults to C<time()> if not specified.
 
 =item code => CODE
 
-CODE reference to the callback function to run at the allotted time.
+CODE reference to the continuation to run at the allotted time.
 
 =back
 
@@ -784,6 +805,120 @@ sub loop_stop
    my $self = shift;
    
    $self->{still_looping} = 0;
+}
+
+=head1 OS ABSTRACTIONS
+
+Because the Magic Constructor searches for OS-specific subclasses of the Loop,
+several abstractions of OS services are provided, in case specific OSes need
+to give different implementations on that OS.
+
+=cut
+
+# This one isn't documented because it's not really overridable. It's largely
+# here just for completeness
+sub socket
+{
+   my $self = shift;
+   my ( $family, $socktype, $proto ) = @_;
+
+   croak "Cannot create a new socket() without a family" unless $family;
+
+   # SOCK_STREAM is the most likely
+   defined $socktype or $socktype = SOCK_STREAM;
+
+   defined $proto or $proto = 0;
+
+   return IO::Socket->new->socket( $family, $socktype, $proto );
+}
+
+=head2 ( $S1, $S2 ) = $loop->socketpair( $family, $socktype, $proto )
+
+An abstraction of the C<socketpair()> syscall, where any argument may be
+missing (or given as C<undef>).
+
+If C<$family> is not provided, a suitable value will be provided by the OS
+(likely C<AF_UNIX> on POSIX-based platforms). If C<$socktype> is not provided,
+then C<SOCK_STREAM> will be used.
+
+=cut
+
+sub socketpair
+{
+   my $self = shift;
+   my ( $family, $socktype, $proto ) = @_;
+
+   # PF_UNSPEC and undef are both false
+   $family ||= AF_UNIX;
+
+   # SOCK_STREAM is the most likely
+   defined $socktype or $socktype = SOCK_STREAM;
+
+   defined $proto or $proto = 0;
+
+   return IO::Socket->new->socketpair( $family, $socktype, $proto );
+}
+
+=head2 ( $rd, $wr ) = $loop->pipepair()
+
+An abstraction of the C<pipe()> syscall, which returns the two new handles.
+
+=cut
+
+sub pipepair
+{
+   my $self = shift;
+
+   pipe( my ( $rd, $wr ) ) or return;
+   return ( $rd, $wr );
+}
+
+=head2 ( $rdA, $wrA, $rdB, $wrB ) = $loop->pipequad()
+
+This method is intended for creating two pairs of filehandles that are linked
+together, suitable for passing as the STDIN/STDOUT pair to a child process.
+After this function returns, C<$rdA> and C<$wrA> will be a linked pair, as
+will C<$rdB> and C<$wrB>.
+
+On platforms that support C<socketpair()>, this implementation will be
+preferred, in which case C<$rdA> and C<$wrB> will actually be the same
+filehandle, as will C<$rdB> and C<$wrA>. This saves a file descriptor in the
+parent process.
+
+When creating a C<IO::Async::Stream> or subclass of it, the C<read_handle>
+and C<write_handle> parameters should always be used.
+
+ my ( $childRd, $myWr, $myRd, $childWr ) = $loop->pipequad();
+
+ $loop->open_child(
+    stdin  => $childRd,
+    stdout => $childWr,
+    ...
+ );
+
+ my $str = IO::Async::Stream->new(
+    read_handle  => $myRd,
+    write_handle => $myWr,
+    ...
+ );
+ $loop->add( $str );
+
+=cut
+
+sub pipequad
+{
+   my $self = shift;
+
+   # Prefer socketpair()
+   if( my ( $S1, $S2 ) = $self->socketpair() ) {
+      return ( $S1, $S2, $S2, $S1 );
+   }
+
+   # Can't do that, fallback on pipes
+   my ( $rdA, $wrA ) = $self->pipepair() or return;
+   my ( $rdB, $wrB ) = $self->pipepair() or return;
+
+   return ( $rdA, $wrA, $rdB, $wrB );
 }
 
 # Keep perl happy; keep Britain tidy

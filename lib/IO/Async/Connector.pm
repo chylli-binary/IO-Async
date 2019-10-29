@@ -7,14 +7,12 @@ package IO::Async::Connector;
 
 use strict;
 
-our $VERSION = '0.16';
+our $VERSION = '0.17';
 
 use IO::Async::Notifier;
 
 use POSIX qw( EINPROGRESS );
-use Socket qw( SOL_SOCKET SO_ERROR );
-
-use IO::Socket; # For the actual connections that are created
+use Socket qw( SO_ERROR );
 
 use Carp;
 
@@ -66,7 +64,7 @@ perhaps some IPv4 ones.
 
 For this reason, the error reporting cannot report which failure is
 responsible for the failure to connect. On success, the C<on_connected>
-callback is invoked with a connected socket. When all addresses have been
+continuation is invoked with a connected socket. When all addresses have been
 tried and failed, C<on_connect_error> is invoked, though no error string can
 be provided, as there isn't a "clear winner" which is responsible for the
 failure.
@@ -101,7 +99,7 @@ sub _get_sock_err
 {
    my ( $sock ) = @_;
 
-   my $err_packed = getsockopt( $sock, SOL_SOCKET, SO_ERROR );
+   my $err_packed = $sock->sockopt( SO_ERROR );
 
    if( defined $err_packed ) {
       my $err = unpack( "I", $err_packed );
@@ -139,14 +137,15 @@ sub _connect_addresses
    my $self = shift;
    my ( $addrlist, $on_connected, $on_connect_error, $on_fail ) = @_;
 
+   my $loop = $self->{loop};
+
    my $sock;
    my $address;
 
    while( my $addr = shift @$addrlist ) {
       ( my ( $family, $socktype, $proto ), $address ) = @$addr;
 
-      $sock = IO::Socket->new();
-      $sock->socket( $family, $socktype, $proto ) and last;
+      $sock = $loop->socket( $family, $socktype, $proto ) and last;
 
       undef $sock;
       $on_fail->( "socket", $family, $socktype, $proto, $! ) if $on_fail;
@@ -174,8 +173,6 @@ sub _connect_addresses
    }
 
    # Now we'll set up a Notifier for a one-shot check on it being writable.
-
-   my $loop = $self->{loop};
 
    my $notifier = IO::Async::Notifier->new(
       write_handle => $sock,
@@ -214,7 +211,7 @@ sub _connect_addresses
 =head2 $loop->connect( %params )
 
 This method performs a non-blocking connection to a given address or set of
-addresses, and invokes a callback when the socket is connected.
+addresses, and invokes a continuation when the socket is connected.
 
 In plain address mode, the C<%params> hash takes the following keys:
 
@@ -242,15 +239,15 @@ trailing elements will be ignored.
 
 =item on_connected => CODE
 
-A callback that is invoked on a successful C<connect()> call to a valid
+A continuation that is invoked on a successful C<connect()> call to a valid
 socket. It will be passed the connected socket handle, as an C<IO::Socket>
 object.
 
 =item on_connect_error => CODE
 
-A callback that is invoked after all of the addresses have been tried, and
+A continuation that is invoked after all of the addresses have been tried, and
 none of them succeeded. Because there is no one error message that stands out
-as particularly noteworthy, none is given to this callback. To track
+as particularly noteworthy, none is given to this continuation. To track
 individual errors, see the C<on_fail> callback.
 
 =item on_fail => CODE
@@ -293,8 +290,9 @@ C<getaddrinfo()> call.
 
 =item on_resolve_error => CODE
 
-A callback that is invoked when the name resolution attempt fails. This is
-invoked in the same way as the C<on_error> callback for the C<resolve> method.
+A continuation that is invoked when the name resolution attempt fails. This is
+invoked in the same way as the C<on_error> continuation for the C<resolve>
+method.
 
 =back
 

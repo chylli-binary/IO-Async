@@ -7,13 +7,14 @@ package IO::Async::Listener;
 
 use strict;
 
-our $VERSION = '0.16';
+our $VERSION = '0.17';
 
 use IO::Async::Notifier;
 
 use POSIX qw( EAGAIN );
-use IO::Socket; # For the actual sockets that are created
 use Socket::GetAddrInfo qw( :Socket6api AI_PASSIVE );
+
+use Socket qw( SO_ACCEPTCONN SO_REUSEADDR );
 
 use Carp;
 
@@ -152,8 +153,9 @@ C<getaddrinfo()> call.
 
 =item on_resolve_error => CODE
 
-A callback that is invoked when the name resolution attempt fails. This is
-invoked in the same way as the C<on_error> callback for the C<resolve> method.
+A continuation that is invoked when the name resolution attempt fails. This is
+invoked in the same way as the C<on_error> continuation for the C<resolve>
+method.
 
 =back
 
@@ -189,9 +191,9 @@ the socket's sockname address, or otherwise inspect the filehandle.
 
 =item on_listen_error => CODE
 
-A callback this is invoked after all of the addresses have been tried, and
+A continuation this is invoked after all of the addresses have been tried, and
 none of them succeeded. Becasue there is no one error message that stands out
-as particularly noteworthy, none is given to this callback. To track
+as particularly noteworthy, none is given to this continuation. To track
 individual errors, see the C<on_fail> callback.
 
 =item on_fail => CODE
@@ -242,9 +244,10 @@ sub listen
       defined eval { $handle->sockname } or croak "IO handle $handle does not have a sockname";
 
       # So now we know it's at least some kind of socket. Is it listening?
-      my $acceptconn = $handle->sockopt( SO_ACCEPTCONN );
-      defined $acceptconn or croak "Cannot getsockopt(SO_ACCEPTCONN) - $!";
-      $acceptconn or croak "Socket is not accepting connections";
+      # SO_ACCEPTCONN would tell us, but not all OSes implement it. Since it's
+      # only a best-effort sanity check, we won't mind if the OS doesn't.
+      my $acceptconn = eval { $handle->sockopt( SO_ACCEPTCONN ) };
+      !defined $acceptconn or $acceptconn or croak "Socket is not accepting connections";
 
       $self->_listen_sock( $handle, $on_accept );
       return;
@@ -275,9 +278,9 @@ sub listen
       foreach my $addr ( @$addrlist ) {
          my ( $family, $socktype, $proto, $address ) = @$addr;
 
-         my $sock = IO::Socket->new();
+         my $sock;
 
-         unless( $sock->socket( $family, $socktype, $proto ) ) {
+         unless( $sock = $loop->socket( $family, $socktype, $proto ) ) {
             $on_fail->( "socket", $family, $socktype, $proto, $! ) if $on_fail;
             next;
          }
