@@ -5,6 +5,7 @@ use warnings;
 
 use Test::More;
 
+use lib "."; # for t::StupidLoop
 use IO::Async::Loop;
 
 $IO::Async::Loop::LOOP_NO_OS = 1;

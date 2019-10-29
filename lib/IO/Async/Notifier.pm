@@ -8,7 +8,7 @@ package IO::Async::Notifier;
 use strict;
 use warnings;
 
-our $VERSION = '0.70';
+our $VERSION = '0.71';
 
 use Carp;
 use Scalar::Util qw( weaken );
@@ -853,7 +853,7 @@ sub maybe_invoke_event
 
 Conditionally print a debugging message to C<STDERR> if debugging is enabled.
 If such a message is printed, it will be printed using C<printf> using the
-given format and arguments. The message will be prefixed with an string, in
+given format and arguments. The message will be prefixed with a string, in
 square brackets, to help identify the C<$notifier> instance. This string will
 be the class name of the notifier, and any parent notifiers it is contained
 by, joined by an arrow C<< <- >>. To ensure this string does not grow too

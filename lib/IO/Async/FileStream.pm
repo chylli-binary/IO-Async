@@ -8,7 +8,7 @@ package IO::Async::FileStream;
 use strict;
 use warnings;
 
-our $VERSION = '0.70';
+our $VERSION = '0.71';
 
 use base qw( IO::Async::Stream );
 
@@ -305,7 +305,7 @@ sub seek
    $success = $filestream->seek_to_last( $str_pattern, %opts )
 
 Callable only during the C<on_initial> event. Attempts to move the read
-position in the filehandle to just after the last occurance of a given match.
+position in the filehandle to just after the last occurrence of a given match.
 C<$str_pattern> may be a literal string or regexp pattern. 
 
 Returns a true value if the seek was successful, or false if not. Takes the

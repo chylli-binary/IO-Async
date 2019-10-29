@@ -1,7 +1,7 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2011-2015 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2011-2016 -- leonerd@leonerd.org.uk
 
 package IO::Async::Channel;
 
@@ -9,11 +9,14 @@ use strict;
 use warnings;
 use base qw( IO::Async::Notifier );
 
-our $VERSION = '0.70';
+our $VERSION = '0.71';
 
 use Carp;
 
 use IO::Async::Stream;
+
+use IO::Async::OS;
+use constant DEFAULT_CODEC => IO::Async::OS->HAVE_SEREAL ? "Sereal" : "Storable";
 
 =head1 NAME
 
@@ -58,14 +61,8 @@ reference to it, and dereference the result of C<recv>.
 If the L<Sereal::Encoder> and L<Sereal::Decoder> modules are installed, this
 can be set to C<Sereal> instead, and will use those to perform the encoding
 and decoding. This optional dependency may give higher performance than using
-C<Storable>.
-
-Currently, the default choice is always C<Storable>. However, a later version
-may switch to using C<Sereal> if the appropriate modules are available. Most
-users of this module should not need to worry about the default. It may matter
-if the C<send_frozen> method is being used to send pre-encoded data. Code that
-tries to do this should be changed to use the C<encode> method and
-C<send_encoded> instead.
+C<Storable>. If these modules are available, then this option is picked by
+default.
 
 =cut
 
@@ -127,7 +124,7 @@ sub _init
    my $self = shift;
    my ( $params ) = @_;
 
-   defined $params->{codec} or $params->{codec} = "Storable";
+   defined $params->{codec} or $params->{codec} = DEFAULT_CODEC;
 
    $self->SUPER::_init( $params );
 }
@@ -244,14 +241,16 @@ it will encode using whatever is the default codec for C<IO::Async::Channel>.
 
 =cut
 
+my $default_encode;
 sub encode
 {
    my $self = shift;
    my ( $data ) = @_;
 
-   return ref $self ?
-      $self->{encode}->( $data ) :
-      do { require Storable; Storable::freeze( $data ) };
+   return ( ref $self ?
+      $self->{encode} :
+      $default_encode ||= do { ( $self->can( "_make_codec_".DEFAULT_CODEC )->() )[0] }
+   )->( $data );
 }
 
 =head2 send_frozen

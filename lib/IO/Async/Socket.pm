@@ -8,7 +8,7 @@ package IO::Async::Socket;
 use strict;
 use warnings;
 
-our $VERSION = '0.70';
+our $VERSION = '0.71';
 
 use base qw( IO::Async::Handle );
 
@@ -85,7 +85,7 @@ Optional. Invoked when the C<recv> method on the receiving handle fails.
 Optional. Invoked when the C<send> method on the sending handle fails.
 
 The C<on_recv_error> and C<on_send_error> handlers are passed the value of
-C<$!> at the time the error occured. (The C<$!> variable itself, by its
+C<$!> at the time the error occurred. (The C<$!> variable itself, by its
 nature, may have changed from the original error by the time this handler
 runs so it should always use the value passed in).
 

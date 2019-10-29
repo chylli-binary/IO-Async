@@ -8,6 +8,8 @@ use IO::Async::Test;
 use Test::More;
 use Test::Fatal;
 use Test::Refcount;
+
+use lib ".";
 use t::TimeAbout;
 
 use Time::HiRes qw( time );

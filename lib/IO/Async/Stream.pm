@@ -8,7 +8,7 @@ package IO::Async::Stream;
 use strict;
 use warnings;
 
-our $VERSION = '0.70';
+our $VERSION = '0.71';
 
 use base qw( IO::Async::Handle );
 
@@ -153,7 +153,7 @@ Optional. Invoked when the C<sysread> method on the read handle fails.
 Optional. Invoked when the C<syswrite> method on the write handle fails.
 
 The C<on_read_error> and C<on_write_error> handlers are passed the value of
-C<$!> at the time the error occured. (The C<$!> variable itself, by its
+C<$!> at the time the error occurred. (The C<$!> variable itself, by its
 nature, may have changed from the original error by the time this handler
 runs so it should always use the value passed in).
 

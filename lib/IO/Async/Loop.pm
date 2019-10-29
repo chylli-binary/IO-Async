@@ -8,7 +8,7 @@ package IO::Async::Loop;
 use strict;
 use warnings;
 
-our $VERSION = '0.70';
+our $VERSION = '0.71';
 
 # When editing this value don't forget to update the docs below
 use constant NEED_API_VERSION => '0.33';
@@ -78,7 +78,8 @@ $SIG{ALRM} = sub {
    }
 } if WATCHDOG_ENABLE;
 
-$SIG{PIPE} = "IGNORE" if ( $SIG{PIPE} || "" ) eq "DEFAULT";
+# There are two default values that might apply; undef or "DEFAULT"
+$SIG{PIPE} = "IGNORE" if ( $SIG{PIPE} || "DEFAULT" ) eq "DEFAULT";
 
 =head1 NAME
 

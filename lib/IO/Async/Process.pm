@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use base qw( IO::Async::Notifier );
 
-our $VERSION = '0.70';
+our $VERSION = '0.71';
 
 use Carp;
 
@@ -232,6 +232,17 @@ The child will be given the reading end of a pipe. The string given by the
 C<from> parameter will be written to the child. When all of the data has been
 written the pipe will be closed.
 
+=item prefork => CODE
+
+Only valid for handles with a C<via> of C<socketpair>. The code block runs
+after the C<socketpair(2)> is created, but before the child is forked. This
+is handy for when you adjust both ends of the created socket (for example, to
+use C<setsockopt(3)>) from the controlling parent, before the child code runs.
+The arguments passed in are the L<IO::Socket> objects for the parent and child
+ends of the socket.
+
+ $prefork->( $localfd, $childfd )
+
 =back
 
 =head2 stdin => ...
@@ -355,7 +366,7 @@ sub configure_fd
    }
 
    if( defined $via and $via == FD_VIA_SOCKETPAIR ) {
-      $self->{fd_opts}{$fd}{$_} = delete $args{$_} for qw( family socktype );
+      $self->{fd_opts}{$fd}{$_} = delete $args{$_} for qw( family socktype prefork );
    }
 
    keys %args and croak "Unexpected extra keys for fd $fd - " . join ", ", keys %args;
@@ -437,6 +448,8 @@ sub _prepare_fds
       }
       elsif( $via == FD_VIA_SOCKETPAIR ) {
          my ( $myfd, $childfd ) = IO::Async::OS->socketpair( $opts->{family}, $opts->{socktype} ) or croak "Unable to socketpair() - $!";
+
+         $opts->{prefork}->( $myfd, $childfd ) if $opts->{prefork};
 
          $handle->configure( handle => $myfd );
 
@@ -865,6 +878,32 @@ using the C<pipe_write> value for C<via>:
  $loop->add( $process );
 
  $process->stdin->write( "Here is some more data\n" );
+
+=head2 Setting socket options
+
+By using the C<prefork> code block you can change the socket receive buffer
+size at both ends of the socket before the child is forked (at which point it
+would be too late for the parent to be able to change the child end of the
+socket).
+
+ use Socket qw( SOL_SOCKET SO_RCVBUF );
+
+ my $process = IO::Async::Process->new(
+    command => [ "command-to-read-from-and-write-to", "arguments" ],
+    stdio => {
+       via => "socketpair",
+       prefork => sub {
+          my ( $parentfd, $childfd ) = @_;
+
+          # Set parent end of socket receive buffer to 3 MB
+          $parentfd->setsockopt(SOL_SOCKET, SO_RCVBUF, 3 * 1024 * 1024);
+          # Set child end of socket receive buffer to 3 MB
+          $childfd ->setsockopt(SOL_SOCKET, SO_RCVBUF, 3 * 1024 * 1024);
+       },
+    },
+ );
+
+ $loop->add( $process );
 
 =cut
 

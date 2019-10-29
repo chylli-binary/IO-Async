@@ -149,7 +149,7 @@ my ( $localhost_err, @localhost_addrs ) = getaddrinfo( "localhost", "www", { fam
 
    if( $localhost_err ) {
       is( $result->[0], "error", 'getaddrinfo_array - error' );
-      is_deeply( $result->[1], "$localhost_err\n", 'getaddrinfo_array - error message' );
+      is_deeply( $result->[1], "$localhost_err", 'getaddrinfo_array - error message' );
    }
    else {
       is( $result->[0], "resolved", 'getaddrinfo_array - resolved' );
@@ -175,7 +175,7 @@ my ( $localhost_err, @localhost_addrs ) = getaddrinfo( "localhost", "www", { fam
 
    if( $localhost_err ) {
       is( $result->[0], "error", 'getaddrinfo_hash - error' );
-      is_deeply( $result->[1], "$localhost_err\n", 'getaddrinfo_hash - error message' );
+      is_deeply( $result->[1], "$localhost_err", 'getaddrinfo_hash - error message' );
    }
    else {
       is( $result->[0], "resolved", 'getaddrinfo_hash - resolved' );
@@ -202,7 +202,7 @@ my ( $localhost_err, @localhost_addrs ) = getaddrinfo( "localhost", "www", { fam
 
    if( $localhost_err ) {
       is( $result->[0], "error", '$resolver->getaddrinfo - error' );
-      is_deeply( $result->[1], "$localhost_err\n", '$resolver->getaddrinfo - error message' );
+      is_deeply( $result->[1], "$localhost_err", '$resolver->getaddrinfo - error message' );
    }
    else {
       is( $result->[0], "resolved", '$resolver->getaddrinfo - resolved' );
@@ -226,7 +226,7 @@ my ( $localhost_err, @localhost_addrs ) = getaddrinfo( "localhost", "www", { fam
    wait_for { $future->is_ready };
 
    if( $localhost_err ) {
-      is( scalar $future->failure, "$localhost_err\n", '$resolver->getaddrinfo - error message' );
+      is( scalar $future->failure, "$localhost_err", '$resolver->getaddrinfo - error message' );
       is( ( $future->failure )[1], "resolve", '->failure [1]' );
       is( ( $future->failure )[2], "getaddrinfo", '->failure [2]' );
    }
@@ -273,7 +273,7 @@ my ( $localhost_err, @localhost_addrs ) = getaddrinfo( "localhost", "www", { fam
 
    if( $passive_err ) {
       is( $result->[0], "error", '$resolver->getaddrinfo passive - error synchronously' );
-      is_deeply( $result->[1], "$passive_err\n", '$resolver->getaddrinfo passive - error message' );
+      is_deeply( $result->[1], "$passive_err", '$resolver->getaddrinfo passive - error message' );
    }
    else {
       is( $result->[0], "resolved", '$resolver->getaddrinfo passive - resolved synchronously' );
@@ -320,7 +320,10 @@ SKIP: {
     ok( $future->failure, '$future failed for missing host' );
     is( ( $future->failure )[1], "resolve", '->failure [1] gives resolve' );
     is( ( $future->failure )[2], "getaddrinfo", '->failure [2] gives getaddrinfo' );
-    is( ( $future->failure )[3], Socket::EAI_NONAME, '->failure [3] gives EAI_NONAME' );
+
+    my $errno = ( $future->failure )[3];
+    ok( $errno == Socket::EAI_NONAME || $errno == Socket::EAI_NODATA, '->failure [3] gives EAI_NONAME or EAI_NODATA' ) or
+      diag( '$errno is ' . $errno );
 }
 
 my $testaddr = pack_sockaddr_in( 80, INADDR_LOOPBACK );
@@ -339,7 +342,7 @@ my ( $testerr, $testhost, $testserv ) = getnameinfo( $testaddr );
 
    if( $testerr ) {
       is( $result->[0], "error", '$resolver->getnameinfo - error' );
-      is_deeply( $result->[1], "$testerr\n", '$resolver->getnameinfo - error message' );
+      is_deeply( $result->[1], "$testerr", '$resolver->getnameinfo - error message' );
    }
    else {
       is( $result->[0], "resolved", '$resolver->getnameinfo - resolved' );
@@ -353,7 +356,7 @@ my ( $testerr, $testhost, $testserv ) = getnameinfo( $testaddr );
    );
 
    if( $testerr ) {
-      is( scalar $future->failure, "$testerr\n", '$resolver->getnameinfo - error message from future' );
+      is( scalar $future->failure, "$testerr", '$resolver->getnameinfo - error message from future' );
       is( ( $future->failure )[1], "resolve", '->failure [1]' );
       is( ( $future->failure )[2], "getnameinfo", '->failure [2]' );
    }

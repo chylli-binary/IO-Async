@@ -5,6 +5,8 @@ use warnings;
 
 use Test::More;
 use Test::Identity;
+
+use lib ".";
 use t::TimeAbout;
 
 use IO::Async::Loop;

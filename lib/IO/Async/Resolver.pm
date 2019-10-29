@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use base qw( IO::Async::Function );
 
-our $VERSION = '0.70';
+our $VERSION = '0.71';
 
 # Socket 2.006 fails to getaddrinfo() AI_NUMERICHOST properly on MSWin32
 use Socket 2.007 qw(
@@ -111,6 +111,34 @@ sub _init
    $params->{min_workers}  = 0;
 
    $started = 1;
+}
+
+sub debug_printf_call
+{
+   my $self = shift;
+   my ( $type, undef, @data ) = @_;
+
+   my $arg0;
+   if( $type eq "getaddrinfo" ) {
+      my %args = @data;
+      $arg0 = sprintf "%s:%s", @args{qw( host service )};
+   }
+   elsif( $type eq "getnameinfo" ) {
+      # cheat
+      $arg0 = sprintf "%s:%s", ( Socket::getnameinfo( $data[0], NI_NUMERICHOST|NI_NUMERICSERV ) )[1,2];
+   }
+   else {
+      $arg0 = $data[0];
+   }
+
+   $self->debug_printf( "CALL $type $arg0" );
+}
+
+sub debug_printf_result
+{
+   my $self = shift;
+   my ( @result ) = @_;
+   $self->debug_printf( "RESULT n=" . scalar @result );
 }
 
 =head1 METHODS

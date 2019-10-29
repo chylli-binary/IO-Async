@@ -1,14 +1,14 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2011-2015 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2011-2016 -- leonerd@leonerd.org.uk
 
 package IO::Async::Function;
 
 use strict;
 use warnings;
 
-our $VERSION = '0.70';
+our $VERSION = '0.71';
 
 use base qw( IO::Async::Notifier );
 use IO::Async::Timer::Countdown;
@@ -292,7 +292,7 @@ sub stop
    }
 }
 
-=head2 restar
+=head2 restart
 
    $function->restart
 
@@ -359,7 +359,7 @@ returned normally, it is called as:
 
  $on_result->( 'return', @values )
 
-If the code threw an exception, or some other error occured such as a closed
+If the code threw an exception, or some other error occurred such as a closed
 connection or the process died, it is called as:
 
  $on_result->( 'error', $exception_name )
@@ -373,6 +373,25 @@ circumstances given above. They will be called directly, without the leading
 =back
 
 =cut
+
+sub debug_printf_call
+{
+   my $self = shift;
+   $self->debug_printf( "CALL" );
+}
+
+sub debug_printf_result
+{
+   my $self = shift;
+   $self->debug_printf( "RESULT" );
+}
+
+sub debug_printf_failure
+{
+   my $self = shift;
+   my ( $err ) = @_;
+   $self->debug_printf( "FAIL $err" );
+}
 
 sub call
 {
@@ -390,17 +409,13 @@ sub call
       my $on_result = delete $params{on_result};
       ref $on_result or croak "Expected 'on_result' to be a reference";
 
-      $on_done = $self->_capture_weakself( sub {
-         my $self = shift or return;
-         $self->debug_printf( "CONT on_result return" );
+      $on_done = sub {
          $on_result->( return => @_ );
-      } );
-      $on_fail = $self->_capture_weakself( sub {
-         my $self = shift or return;
+      };
+      $on_fail = sub {
          my ( $err, @values ) = @_;
-         $self->debug_printf( "CONT on_result error" );
          $on_result->( error => @values );
-      } );
+      };
    }
    elsif( defined $params{on_return} and defined $params{on_error} ) {
       my $on_return = delete $params{on_return};
@@ -408,26 +423,19 @@ sub call
       my $on_error  = delete $params{on_error};
       ref $on_error or croak "Expected 'on_error' to be a reference";
 
-      $on_done = $self->_capture_weakself( sub {
-         my $self = shift or return;
-         $self->debug_printf( "CONT on_return" );
-         $on_return->( @_ );
-      } );
-      $on_fail = $self->_capture_weakself( sub {
-         my $self = shift or return;
-         $self->debug_printf( "CONT on_error" );
-         $on_error->( @_ );
-      } );
+      $on_done = $on_return;
+      $on_fail = $on_error;
    }
    elsif( !defined wantarray ) {
       croak "Expected either 'on_result' or 'on_return' and 'on_error' keys, or to return a Future";
    }
 
+   $self->debug_printf_call( @$args );
+
    my $request = IO::Async::Channel->encode( $args );
 
    my $future;
    if( my $worker = $self->_get_worker ) {
-      $self->debug_printf( "CALL" );
       $future = $self->_call_worker( $worker, $request );
    }
    else {
@@ -439,6 +447,15 @@ sub call
          $self->_call_worker( $worker, $request );
       });
    }
+
+   $future->on_done( $self->_capture_weakself( sub {
+      my $self = shift or return;
+      $self->debug_printf_result( @_ );
+   }));
+   $future->on_fail( $self->_capture_weakself( sub {
+      my $self = shift or return;
+      $self->debug_printf_failure( @_ );
+   }));
 
    $future->on_done( $on_done ) if $on_done;
    $future->on_fail( $on_fail ) if $on_fail;

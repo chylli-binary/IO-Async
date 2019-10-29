@@ -1,5 +1,20 @@
 Revision history for IO-Async
 
+0.71    2016/12/22 15:05:50
+        [CHANGES]
+         * Added 'prefork' option to IO::Async::Channel (RT115920) - thanks
+           GMARLER
+         * Prefer Sereal Channel encoding if that module is available
+         * Ensure that IaFunction still prints debug information on futures
+         * Miscellaneous spelling fixes in docs - thanks genio
+
+        [BUGFIXES]
+         * 'use lib ".";' for perl 5.24
+         * Make t/50resolver.t less sensitive to EAI_NONAME vs EAI_NODATA
+           because some resolvers lie (RT113429)
+         * Fix error message linefeed tests in t/50resolver.t (RT119369)
+         * Ensure that SIGPIPE is ignored if it's still at its default value
+
 0.70    2015/12/15 18:17:43
         [CHANGES]
          * Support perl 5.8.x (tested on 5.8.9, presumed working as far as

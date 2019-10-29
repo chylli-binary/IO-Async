@@ -8,7 +8,7 @@ package IO::Async::Loop::Poll;
 use strict;
 use warnings;
 
-our $VERSION = '0.70';
+our $VERSION = '0.71';
 use constant API_VERSION => '0.49';
 
 use base qw( IO::Async::Loop );
@@ -182,7 +182,7 @@ sub post_poll
       }
    }
 
-   # Since we have no way to know if the timeout occured, we'll have to
+   # Since we have no way to know if the timeout occurred, we'll have to
    # attempt to fire any waiting timeout events anyway
    $count += $self->_manage_queues;
 
@@ -231,9 +231,9 @@ sub loop_once
 
          if( ( $pollret == -1 and $! == EINTR ) or $pollret == 0 
                  and defined $self->{sigproxy} ) {
-            # A signal occured and we have a sigproxy. Allow one more poll call
-            # with zero timeout. If it finds something, keep that result. If it
-            # finds nothing, keep -1
+            # A signal occurred and we have a sigproxy. Allow one more poll
+            # call with zero timeout. If it finds something, keep that result.
+            # If it finds nothing, keep -1
 
             # Preserve $! whatever happens
             local $!;

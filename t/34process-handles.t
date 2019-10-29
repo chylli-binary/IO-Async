@@ -365,6 +365,48 @@ testing_loop( $loop );
 
 {
    my $process = IO::Async::Process->new(
+      code => sub {
+         defined STDIN->sysread( my $pkt, 8192 ) or die "Cannot recv - $!";
+         STDOUT->syswrite( $pkt ) or die "Cannot send - $!";
+         return 0;
+      },
+      stdio => {
+        via => "socketpair",
+        prefork => sub {
+          my ( $myfd, $childfd ) = @_;
+
+          $myfd->write( "Data from the prefork" );
+        },
+      },
+      on_finish => sub { },
+   );
+
+   isa_ok( $process->stdio, "IO::Async::Stream", '$process->stdio isa Stream' );
+
+   my $output_packet = "";
+   $process->stdio->configure(
+      on_read => sub {
+         my ( undef, $buffref ) = @_;
+         $output_packet .= $$buffref;
+         $$buffref = "";
+         return 0;
+      },
+   );
+
+   $loop->add( $process );
+
+   isa_ok( $process->stdio->read_handle, "IO::Socket", '$process->stdio handle isa IO::Socket' );
+
+   wait_for { defined $output_packet and !$process->is_running };
+
+   ok( $process->is_exited,     '$process->is_exited after perl STDIO via socketpair' );
+   is( $process->exitstatus, 0, '$process->exitstatus after perl STDIO via socketpair' );
+
+   is_deeply( $output_packet, "Data from the prefork", '$output_packet from prefork via socketpair' );
+}
+
+{
+   my $process = IO::Async::Process->new(
       code => sub { return 0 },
       stdio => { via => "socketpair", family => "inet" },
       on_finish => sub { },

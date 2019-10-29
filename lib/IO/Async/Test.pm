@@ -8,7 +8,7 @@ package IO::Async::Test;
 use strict;
 use warnings;
 
-our $VERSION = '0.70';
+our $VERSION = '0.71';
 
 use Exporter 'import';
 our @EXPORT = qw(
@@ -69,7 +69,7 @@ asynchronisation framework, does not provide a linear stepped way of working.
 
 In order to write a test, the C<wait_for> function provides a way of
 synchronising the code, so that a given condition is known to hold, which
-would typically signify that some event has occured, the outcome of which can
+would typically signify that some event has occurred, the outcome of which can
 now be tested using the usual testing primitives.
 
 Because the primary purpose of L<IO::Async> is to provide IO operations on

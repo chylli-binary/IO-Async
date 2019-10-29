@@ -18,6 +18,8 @@ my $loop = IO::Async::Loop->new_builtin;
 
 testing_loop( $loop );
 
+note( "Default IO::Async::Channel codec is " . IO::Async::Channel->DEFAULT_CODEC );
+
 # sync->sync - mostly doesn't involve IO::Async
 {
    my ( $pipe_rd, $pipe_wr ) = IO::Async::OS->pipepair;

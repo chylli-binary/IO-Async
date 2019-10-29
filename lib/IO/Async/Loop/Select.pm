@@ -8,7 +8,7 @@ package IO::Async::Loop::Select;
 use strict;
 use warnings;
 
-our $VERSION = '0.70';
+our $VERSION = '0.71';
 use constant API_VERSION => '0.49';
 
 use base qw( IO::Async::Loop );
@@ -199,7 +199,7 @@ sub post_select
       }
    }
 
-   # Since we have no way to know if the timeout occured, we'll have to
+   # Since we have no way to know if the timeout occurred, we'll have to
    # attempt to fire any waiting timeout events anyway
 
    $self->_manage_queues;
