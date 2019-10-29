@@ -282,7 +282,7 @@ SKIP: {
    is( $failop, "connect", '$failop is connect' );
    is( $failerr+0, ENOENT, '$failerr is ENOENT' );
 
-   ok( scalar $future->failure, '$future failed' );
+   ok( $future->is_failed, '$future failed' );
    is( ( $future->failure )[2], "connect", '$future fail op is connect' );
    is( ( $future->failure )[3]+0, ENOENT, '$future fail err is ENOENT' );
 }

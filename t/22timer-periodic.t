@@ -171,6 +171,27 @@ testing_loop( $loop );
    $loop->unwatch_time( $id );
 }
 
+# Exception in on_tick shouldn't prevent reschedule
+{
+   my $count = 0;
+   my $timer = IO::Async::Timer::Periodic->new(
+      interval => 0.1 * AUT,
+
+      on_tick => sub { $count++; die "FAIL $count" },
+   );
+
+   $loop->add( $timer );
+   $timer->start;
+
+   like( exception { wait_for { $count > 0 } },
+      qr/FAIL 1/, 'on_tick death throws exception' );
+
+   like( exception { wait_for { $count > 1 } },
+      qr/FAIL 2/, 'on_tick death rescheduled and runs a second time' );
+
+   $loop->remove( $timer );
+}
+
 ## Subclass
 
 my $sub_tick = 0;

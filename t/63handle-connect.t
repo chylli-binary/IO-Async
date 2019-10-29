@@ -44,7 +44,7 @@ my $addr = $listensock->sockname;
    ok( defined $f, '$handle->connect Future defined' );
 
    wait_for { $f->is_ready };
-   $f->failure and $f->get;
+   $f->is_failed and $f->get;
 
    ok( defined $handle->read_handle, '$handle->read_handle defined after ->connect addr' );
    is( $handle->read_handle->peerport, $listensock->sockport, '$handle->read_handle->peerport after ->connect addr' );
@@ -71,7 +71,7 @@ my $addr = $listensock->sockname;
    );
 
    wait_for { $f->is_ready };
-   $f->failure and $f->get;
+   $f->is_failed and $f->get;
 
    ok( defined $handle->read_handle, '$handle->read_handle defined after ->connect host/service' );
    is( $handle->read_handle->peerport, $listensock->sockport, '$handle->read_handle->peerport after ->connect host/service' );

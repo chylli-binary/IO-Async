@@ -1,14 +1,14 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2011-2014 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2011-2015 -- leonerd@leonerd.org.uk
 
 package IO::Async::Function;
 
 use strict;
 use warnings;
 
-our $VERSION = '0.65';
+our $VERSION = '0.66';
 
 use base qw( IO::Async::Notifier );
 use IO::Async::Timer::Countdown;
@@ -417,7 +417,7 @@ sub call
 
    # Caller is not going to keep hold of the Future, so we have to ensure it
    # stays alive somehow
-   $future->on_ready( sub { undef $future } ); # intentional cycle
+   $self->adopt_future( $future->else( sub { Future->done } ) );
 }
 
 sub _worker_objects
@@ -625,10 +625,10 @@ sub call
                           $worker->{exit_on_die} && $type eq "e";
 
          if( $type eq "r" ) {
-            return Future->new->done( @values );
+            return Future->done( @values );
          }
          elsif( $type eq "e" ) {
-            return Future->new->fail( @values );
+            return Future->fail( @values );
          }
          else {
             die "Unrecognised type from worker - $type\n";
@@ -640,7 +640,7 @@ sub call
 
          $worker->stop;
 
-         return Future->new->fail( "closed", "closed" );
+         return Future->fail( "closed", "closed" );
       } )
    )->on_ready( $worker->_capture_weakself( sub {
       my ( $worker, $f ) = @_;

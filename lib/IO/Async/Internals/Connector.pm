@@ -9,7 +9,7 @@ package # hide from CPAN
 use strict;
 use warnings;
 
-our $VERSION = '0.65';
+our $VERSION = '0.66';
 
 use Scalar::Util qw( weaken );
 
@@ -95,13 +95,13 @@ sub _connect_addresses
       if( !$sock ) {
          $socketerr = $!;
          $on_fail->( "socket", $family, $socktype, $protocol, $! ) if $on_fail;
-         return Future->new->fail( 1 );
+         return Future->fail( 1 );
       }
 
       if( $localaddr and not $sock->bind( $localaddr ) ) {
          $binderr = $!;
          $on_fail->( "bind", $sock, $localaddr, $! ) if $on_fail;
-         return Future->new->fail( 1 );
+         return Future->fail( 1 );
       }
 
       $sock->blocking( 0 );
@@ -111,12 +111,12 @@ sub _connect_addresses
       if( $ret ) {
          # Succeeded already? Dubious, but OK. Can happen e.g. with connections to
          # localhost, or UNIX sockets, or something like that.
-         return Future->new->done( $sock );
+         return Future->done( $sock );
       }
       elsif( $! != EINPROGRESS and !CONNECT_EWOULDLBOCK || $! != POSIX::EWOULDBLOCK ) {
          $connecterr = $!;
          $on_fail->( "connect", $sock, $peeraddr, $! ) if $on_fail;
-         return Future->new->fail( 1 );
+         return Future->fail( 1 );
       }
 
       # Else

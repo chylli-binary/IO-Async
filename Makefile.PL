@@ -8,7 +8,7 @@ WriteMakefile
   'PREREQ_PM' => {
                    'Exporter' => '5.57',
                    'File::stat' => 0,
-                   'Future' => '0.22',
+                   'Future' => '0.26',
                    'Future::Utils' => '0.18',
                    'IO::Poll' => 0,
                    'Socket' => '2.007',

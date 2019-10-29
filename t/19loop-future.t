@@ -98,7 +98,7 @@ my $loop = IO::Async::Loop->new_builtin;
    time_about( sub { $loop->await( $future ) }, 1, '->timeout_future is ready' );
 
    ok( $future->is_ready, '$future is ready from timeout_future' );
-   is( $future->failure, "Timeout", '$future failed with "Timeout" for timeout_future' );
+   is( scalar $future->failure, "Timeout", '$future failed with "Timeout" for timeout_future' );
 
    # Check that ->cancel does not crash
    $loop->timeout_future( after => 1 * AUT )->cancel;

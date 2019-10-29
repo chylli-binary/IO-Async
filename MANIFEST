@@ -10,6 +10,7 @@ examples/whoami-server.pl
 lib/IO/Async.pm
 lib/IO/Async/Channel.pm
 lib/IO/Async/ChildManager.pm
+lib/IO/Async/Debug.pm
 lib/IO/Async/File.pm
 lib/IO/Async/FileStream.pm
 lib/IO/Async/Function.pm
@@ -107,6 +108,7 @@ t/60protocol.t
 t/61protocol-stream.t
 t/62protocol-linestream.t
 t/63handle-connect.t
+t/64handle-bind.t
 t/99pod.t
 t/StupidLoop.pm
 t/TimeAbout.pm

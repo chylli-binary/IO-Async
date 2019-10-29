@@ -1,7 +1,7 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2006-2013 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2006-2015 -- leonerd@leonerd.org.uk
 
 package IO::Async::Handle;
 
@@ -9,13 +9,14 @@ use strict;
 use warnings;
 use base qw( IO::Async::Notifier );
 
-our $VERSION = '0.65';
+our $VERSION = '0.66';
 
 use Carp;
 
 use IO::Handle; # give methods to bare IO handles
 
 use Future;
+use Future::Utils qw( try_repeat );
 
 use IO::Async::OS;
 
@@ -603,29 +604,51 @@ sub socket
    $self->set_handle( $sock );
 }
 
-=head2 $handle->bind( $ai )
+=head2 $handle = $handle->bind( %args )->get
 
-Convenient shortcut to creating a socket handle and C<bind()>ing it to the
-address as given by an addrinfo structure, and setting it as the read and
-write handle for the object.
+Performs a C<getaddrinfo> resolver operation with the C<passive> flag set,
+and then attempts to bind a socket handle of any of the return values.
+
+=head2 $handle = $handle->bind( $ai )->get
+
+When invoked with a single argument, this method is a convenient shortcut to
+creating a socket handle and C<bind()>ing it to the address as given by an
+addrinfo structure, and setting it as the read and write handle for the
+object.
 
 C<$ai> may be either a C<HASH> or C<ARRAY> reference of the same form as given
 to L<IO::Async::OS>'s C<extract_addrinfo> method.
 
-This method returns nothing if it succeeds, or throws an exception if it
-fails.
+The returned future returns the handle object itself for convenience.
 
 =cut
 
 sub bind
 {
    my $self = shift;
-   my ( $ai ) = @_;
 
-   $self->socket( $ai );
-   my $addr = ( IO::Async::OS->extract_addrinfo( $ai ) )[3];
+   if( @_ == 1 ) {
+      my ( $ai ) = @_;
 
-   $self->read_handle->bind( $addr ) or croak "Cannot bind - $!";
+      $self->socket( $ai );
+      my $addr = ( IO::Async::OS->extract_addrinfo( $ai ) )[3];
+
+      $self->read_handle->bind( $addr ) or
+         return Future->fail( "Cannot bind - $!", bind => $self->read_handle, $addr, $! );
+
+      return Future->done( $self );
+   }
+
+   $self->loop->resolver->getaddrinfo( passive => 1, @_ )->then( sub {
+      my @addrs = @_;
+
+      try_repeat {
+         my $ai = shift;
+
+         $self->bind( $ai );
+      } foreach => \@addrs,
+        until => sub { shift->is_done };
+   });
 }
 
 =head2 $handle = $handle->connect( %args )->get

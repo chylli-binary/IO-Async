@@ -1,5 +1,23 @@
 Revision history for IO-Async
 
+0.66    2015/04/17 20:36:39
+        [CHANGES]
+         * Created IO::Async::Debug
+         * Ignore SIGPIPE by default (RT92024)
+         * IaSocket->bind now returns a Future
+         * Added IaSocket->bind resolver support and neatened up UDP examples
+           in synopsis/documentation
+
+        [BUGFIXES]
+         * Correct call to unpack() in IaStream example (RT103143)
+         * Don't silently eat accept() failures in IaListener (RT102677)
+         * Remember to add the new resolver instance to $loop in
+           ->set_resolver (RT103446)
+         * Correct implementation of ->unwatch_io on IaLoop::Poll to prevent
+           100% CPU spin (RT103445)
+         * Ensure that an exception thrown by Timer::Periodic's on_tick
+           doesn't prevent rescheduling
+
 0.65    2015/02/15 14:28:02
         [CHANGES]
          * Optionally allow IO::Async::Channel to use 'Sereal' serialisation

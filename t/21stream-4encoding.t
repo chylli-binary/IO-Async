@@ -131,7 +131,7 @@ sub read_data
    is( $byte, "\x89", 'Remaining UTF-8 byte written with write_len 1' );
 
    $flushed = 0;
-   $stream->write( Future->new->done( "\x{10a}" ), on_flush => sub { $flushed++ } );
+   $stream->write( Future->done( "\x{10a}" ), on_flush => sub { $flushed++ } );
 
    wait_for { $flushed };
 

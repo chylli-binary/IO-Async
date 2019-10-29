@@ -1,15 +1,16 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2007-2013 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2007-2015 -- leonerd@leonerd.org.uk
 
 package IO::Async::Resolver;
 
 use strict;
 use warnings;
+use 5.010;
 use base qw( IO::Async::Function );
 
-our $VERSION = '0.65';
+our $VERSION = '0.66';
 
 # Socket 2.006 fails to getaddrinfo() AI_NUMERICHOST properly on MSWin32
 use Socket 2.007 qw(
@@ -211,7 +212,7 @@ sub resolve
 
    # Caller is not going to keep hold of the Future, so we have to ensure it
    # stays alive somehow
-   $future->on_ready( sub { undef $future } ); # intentional cycle
+   $self->adopt_future( $future->else( sub { Future->done } ) );
 }
 
 =head2 @addrs = $resolver->getaddrinfo( %args )->get
@@ -301,7 +302,7 @@ sub getaddrinfo
       croak "Expected 'on_error' or to return a Future";
 
    my $host    = $args{host}    || "";
-   my $service = $args{service} || "";
+   my $service = $args{service} // "";
    my $flags   = $args{flags}   || 0;
 
    $flags |= AI_PASSIVE if $args{passive};
@@ -352,7 +353,7 @@ sub getaddrinfo
       timeout => $args{timeout},
    )->else( sub {
       my $message = shift;
-      Future->new->fail( $message, resolve => getaddrinfo => @_ );
+      Future->fail( $message, resolve => getaddrinfo => @_ );
    });
 
    $future->on_done( $args{on_resolved} ) if $args{on_resolved};
@@ -362,7 +363,7 @@ sub getaddrinfo
 
    # Caller is not going to keep hold of the Future, so we have to ensure it
    # stays alive somehow
-   $future->on_ready( sub { undef $future } ); # intentional cycle
+   $self->adopt_future( $future->else( sub { Future->done } ) );
 }
 
 =head2 ( $host, $service ) = $resolver->getnameinfo( %args )->get
@@ -469,7 +470,7 @@ sub getnameinfo
       done => sub { @{ $_[0] } }, # unpack the ARRAY ref
    )->else( sub {
       my $message = shift;
-      Future->new->fail( $message, resolve => getnameinfo => @_ );
+      Future->fail( $message, resolve => getnameinfo => @_ );
    });
 
    $future->on_done( $args{on_resolved} ) if $args{on_resolved};
@@ -479,7 +480,7 @@ sub getnameinfo
 
    # Caller is not going to keep hold of the Future, so we have to ensure it
    # stays alive somehow
-   $future->on_ready( sub { undef $future } ); # intentional cycle
+   $self->adopt_future( $future->else( sub { Future->done } ) );
 }
 
 =head1 FUNCTIONS

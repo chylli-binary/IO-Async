@@ -1,7 +1,7 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2009-2012 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2009-2015 -- leonerd@leonerd.org.uk
 
 package IO::Async::Timer::Periodic;
 
@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use base qw( IO::Async::Timer );
 
-our $VERSION = '0.65';
+our $VERSION = '0.66';
 
 use Carp;
 
@@ -223,10 +223,13 @@ sub _make_cb
 
       undef $self->{id};
 
-      $self->invoke_event( on_tick => );
+      my $ok = eval { $self->invoke_event( on_tick => ); 1 } or
+         my $e = $@;
 
       # detect ->stop
       $self->start if defined $self->{next_time};
+
+      die $e if !$ok;
    } );
 }
 

@@ -377,7 +377,7 @@ my $sub_writeready = 0;
    is( $handle->read_handle->sockdomain,       AF_INET,     'handle->sockdomain is AF_INET' );
    is( $handle->read_handle->sockopt(SO_TYPE), SOCK_STREAM, 'handle->socktype is SOCK_STREAM' );
 
-   $handle->bind( { family => "inet", socktype => "dgram" } );
+   $handle->bind( { family => "inet", socktype => "dgram" } )->get;
 
    is( $handle->read_handle->sockopt(SO_TYPE), SOCK_DGRAM, 'handle->socktype is SOCK_DGRAM' );
    # Not sure what port number but it should be nonzero

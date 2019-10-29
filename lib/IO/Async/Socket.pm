@@ -1,14 +1,14 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2011 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2011-2015 -- leonerd@leonerd.org.uk
 
 package IO::Async::Socket;
 
 use strict;
 use warnings;
 
-our $VERSION = '0.65';
+our $VERSION = '0.66';
 
 use base qw( IO::Async::Handle );
 
@@ -28,36 +28,27 @@ filehandle
  use IO::Async::Loop;
  my $loop = IO::Async::Loop->new;
 
- $loop->connect(
+ my $socket = IO::Async::Socket->new(
+    on_recv => sub {
+       my ( $self, $dgram, $addr ) = @_;
+
+       print "Received reply: $dgram\n",
+       $loop->stop;
+    },
+    on_recv_error => sub {
+       my ( $self, $errno ) = @_;
+       die "Cannot recv - $errno\n";
+    },
+ );
+ $loop->add( $socket );
+
+ $socket->connect(
     host     => "some.host.here",
     service  => "echo",
     socktype => 'dgram',
+ )->get;
 
-    on_connected => sub {
-       my ( $sock ) = @_;
-
-       my $socket = IO::Async::Socket->new(
-          handle => $sock,
-          on_recv => sub {
-             my ( $self, $dgram, $addr ) = @_;
-
-             print "Received reply: $dgram\n",
-             $loop->stop;
-          },
-          on_recv_error => sub {
-             my ( $self, $errno ) = @_;
-             die "Cannot recv - $errno\n";
-          },
-       );
-
-       $loop->add( $socket );
-
-       $socket->send( "A TEST DATAGRAM" );
-    },
-
-    on_resolve_error => sub { die "Cannot resolve - $_[0]\n"; },
-    on_connect_error => sub { die "Cannot connect\n"; },
- );
+ $socket->send( "A TEST DATAGRAM" );
 
  $loop->run;
 
@@ -326,17 +317,27 @@ sub on_write_ready
 
 =head1 EXAMPLES
 
-=head2 Using a UDP Socket
+=head2 Send-first on a UDP Socket
 
 C<UDP> is carried by the C<SOCK_DGRAM> socket type, for which the string
 C<'dgram'> is a convenient shortcut:
 
- $loop->connect(
+ $socket->connect(
     host     => $hostname,
     service  => $service,
     socktype => 'dgram',
     ...
  )
+
+=head2 Receive-first on a UDP Socket
+
+A typical server pattern with C<UDP> involves binding a well-known port
+number instead of connecting to one, and waiting on incoming packets.
+
+ $socket->bind(
+    service  => 12345,
+    socktype => 'dgram',
+ )->get;
 
 =head1 SEE ALSO
 

@@ -226,7 +226,7 @@ my ( $localhost_err, @localhost_addrs ) = getaddrinfo( "localhost", "www", { fam
    wait_for { $future->is_ready };
 
    if( $localhost_err ) {
-      is( $future->failure, "$localhost_err\n", '$resolver->getaddrinfo - error message' );
+      is( scalar $future->failure, "$localhost_err\n", '$resolver->getaddrinfo - error message' );
    }
    else {
       my @got = $future->get;
@@ -332,7 +332,7 @@ my ( $testerr, $testhost, $testserv ) = getnameinfo( $testaddr );
    wait_for { $future->is_ready };
 
    if( $testerr ) {
-      is( $future->failure, "$testerr\n", '$resolver->getnameinfo - error message from future' );
+      is( scalar $future->failure, "$testerr\n", '$resolver->getnameinfo - error message from future' );
    }
    else {
       my @got = $future->get;
@@ -368,10 +368,12 @@ my ( $testerr, $testhost, $testserv ) = getnameinfo( $testaddr );
    my $callcount = 0;
    {
       package MockResolver;
+      use base qw( IO::Async::Notifier );
+
       sub new { bless {}, shift }
 
       sub resolve {
-         $callcount++; return Future->new->done();
+         $callcount++; return Future->done();
       }
       sub getaddrinfo {}
       sub getnameinfo {}

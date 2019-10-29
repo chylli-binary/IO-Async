@@ -1,7 +1,7 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2008-2014 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2008-2015 -- leonerd@leonerd.org.uk
 
 package IO::Async::Listener;
 
@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use base qw( IO::Async::Handle );
 
-our $VERSION = '0.65';
+our $VERSION = '0.66';
 
 use IO::Async::Handle;
 use IO::Async::OS;
@@ -43,7 +43,7 @@ C<IO::Async::Listener> - listen on network sockets for incoming connections
              return 0;
           },
        );
-       
+
        $loop->add( $stream );
     },
  );
@@ -128,7 +128,7 @@ constructor or class.
 
 Optional. Invoked if the C<accept> syscall indicates an error (other than
 C<EAGAIN> or C<EWOULDBLOCK>). If not provided, failures of C<accept> will
-simply be ignored.
+be passed to the main C<on_error> handler.
 
 =cut
 
@@ -294,13 +294,17 @@ sub on_read_ready
       my ( $result ) = @_ or return; # false-alarm
       $on_done->( $self, $result );
    })->on_fail( sub {
-      my ( $message, undef, $socket, $dollarbang ) = @_;
-      $self->maybe_invoke_event( on_accept_error => $socket, $dollarbang );
+      my ( $message, $name, @args ) = @_;
+      if( $name eq "accept" ) {
+         my ( $socket, $dollarbang ) = @args;
+         $self->maybe_invoke_event( on_accept_error => $socket, $dollarbang ) or
+            $self->invoke_error( "accept() failed - $dollarbang", accept => $socket, $dollarbang );
+      }
    });
 
    # Caller is not going to keep hold of the Future, so we have to ensure it
    # stays alive somehow
-   $f->on_ready( sub { undef $f } ); # intentional cycle
+   $self->adopt_future( $f->else( sub { Future->done } ) );
 }
 
 sub _accept
@@ -314,17 +318,17 @@ sub _accept
       $accepted->blocking( 0 );
       if( my $handle = $params{handle} ) {
          $handle->set_handle( $accepted );
-         return Future->new->done( $handle );
+         return Future->done( $handle );
       }
       else {
-         return Future->new->done( $accepted );
+         return Future->done( $accepted );
       }
    }
    elsif( $! == EAGAIN or $! == EWOULDBLOCK ) {
-      return Future->new->done;
+      return Future->done;
    }
    else {
-      return Future->new->fail( "Cannot accept() - $!", accept => $listen_sock, $! );
+      return Future->fail( "Cannot accept() - $!", accept => $listen_sock, $! );
    }
 }
 
@@ -462,7 +466,7 @@ sockets.
              return 0;
           },
        );
-       
+
        $loop->add( $stream );
     },
  );

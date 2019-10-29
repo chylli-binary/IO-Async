@@ -1,7 +1,7 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2010-2011 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2010-2015 -- leonerd@leonerd.org.uk
 
 package IO::Async::Timer::Absolute;
 
@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use base qw( IO::Async::Timer );
 
-our $VERSION = '0.65';
+our $VERSION = '0.66';
 
 use Carp;
 
@@ -29,7 +29,7 @@ C<IO::Async::Timer::Absolute> - event callback at a fixed future time
  my @time = gmtime;
 
  my $timer = IO::Async::Timer::Absolute->new(
-    time => mktime( 0, 0, 0, $time[4]+1, $time[5], $time[6] ),
+    time => mktime( 0, 0, 0, $time[3]+1, $time[4], $time[5] ),
 
     on_expire => sub {
        print "It's midnight\n";

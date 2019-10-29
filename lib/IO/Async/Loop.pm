@@ -7,8 +7,9 @@ package IO::Async::Loop;
 
 use strict;
 use warnings;
+use 5.010;
 
-our $VERSION = '0.65';
+our $VERSION = '0.66';
 
 # When editing this value don't forget to update the docs below
 use constant NEED_API_VERSION => '0.33';
@@ -78,6 +79,8 @@ $SIG{ALRM} = sub {
    }
 } if WATCHDOG_ENABLE;
 
+$SIG{PIPE} = "IGNORE" if ( $SIG{PIPE} // "" ) eq "DEFAULT";
+
 =head1 NAME
 
 C<IO::Async::Loop> - core loop of the C<IO::Async> framework
@@ -132,6 +135,15 @@ See also the two bundled Loop subclasses:
 
 Or other subclasses that may appear on CPAN which are not part of the core
 C<IO::Async> distribution.
+
+=head2 Ignoring SIGPIPE
+
+Since version I<0.66> loading this module automatically ignores C<SIGPIPE>, as
+it is highly unlikely that the default-terminate action is the best course of
+action for an C<IO::Async>-based program to take. If at load time the handler
+disposition is still set as C<DEFAULT>, it is set to ignore. If already
+another handler has been placed there by the program code, it will be left
+undisturbed.
 
 =cut
 
@@ -1078,6 +1090,8 @@ sub set_resolver
       for qw( resolve getaddrinfo getnameinfo );
 
    $self->{resolver} = $resolver;
+
+   $self->add( $resolver );
 }
 
 =head2 @result = $loop->resolve( %params )->get
@@ -1373,7 +1387,7 @@ sub connect
 
    $future = $future->then( sub {
       $handle->set_handle( shift );
-      return Future->new->done( $handle )
+      return Future->done( $handle )
    }) if $handle;
 
    $future->on_done( $on_done ) if $on_done;

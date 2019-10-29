@@ -8,7 +8,7 @@ package IO::Async::Loop::Poll;
 use strict;
 use warnings;
 
-our $VERSION = '0.65';
+our $VERSION = '0.66';
 use constant API_VERSION => '0.49';
 
 use base qw( IO::Async::Loop );
@@ -303,12 +303,14 @@ sub unwatch_io
 
    $self->__unwatch_io( %params );
 
-   # Guard for global destruction
-   my $poll = $self->{poll} or return;
+   my $poll = $self->{poll};
 
    my $handle = $params{handle};
+   my $fileno = $handle->fileno;
 
-   my $curmask = $poll->mask( $handle ) || 0;
+   my $curmask = $poll ? $poll->mask( $handle )
+                       : $self->{pollmask}{$fileno};
+   $curmask ||= 0;
 
    my $mask = $curmask;
    $params{on_read_ready}  and $mask &= ~POLLIN;
@@ -324,7 +326,10 @@ sub unwatch_io
       }
    }
 
-   $poll->mask( $handle, $mask ) if $mask != $curmask;
+   return if $mask == $curmask;
+
+   $poll ? $poll->mask( $handle, $mask )
+         : ( $self->{pollmask}{$fileno} = $mask );
 }
 
 =head1 AUTHOR

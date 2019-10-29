@@ -1,7 +1,7 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2006-2014 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2006-2015 -- leonerd@leonerd.org.uk
 
 package IO::Async::Stream;
 
@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use 5.010; # //
 
-our $VERSION = '0.65';
+our $VERSION = '0.66';
 
 use base qw( IO::Async::Handle );
 
@@ -19,6 +19,8 @@ use Carp;
 
 use Encode 2.11 qw( find_encoding STOP_AT_PARTIAL );
 use Scalar::Util qw( blessed );
+
+use IO::Async::Debug;
 
 # Tuneable from outside
 # Not yet documented
@@ -765,6 +767,12 @@ sub _flush_one_write
 
    die "TODO: head data does not contain a plain string" if ref $head->data;
 
+   if( $IO::Async::Debug::DEBUG > 1 ) {
+      my $data = substr $head->data, 0, $head->writelen;
+      $self->debug_printf( "WRITE len=%d", length $data );
+      IO::Async::Debug::log_hexdump( $data ) if $IO::Async::Debug::DEBUG_FLAGS{Sw};
+   }
+
    my $writer = $self->{writer};
    my $len = $self->$writer( $self->write_handle, $head->data, $head->writelen );
 
@@ -969,6 +977,11 @@ sub _do_read
          undef @{ $self->{readqueue} };
 
          return;
+      }
+
+      if( $IO::Async::Debug::DEBUG > 1 ) {
+         $self->debug_printf( "READ len=%d", $len );
+         IO::Async::Debug::log_hexdump( $data ) if $IO::Async::Debug::DEBUG_FLAGS{Sr};
       }
 
       my $eof = $self->{read_eof} = ( $len == 0 );
@@ -1235,6 +1248,24 @@ sub connect
    return $self->SUPER::connect( socktype => "stream", @_ );
 }
 
+=head1 DEBUGGING FLAGS
+
+The following flags in C<IO_ASYNC_DEBUG_FLAGS> enable extra logging:
+
+=over 4
+
+=item C<Sr>
+
+Log byte buffers as data is read from a Stream
+
+=item C<Sw>
+
+Log byte buffers as data is written to a Stream
+
+=back
+
+=cut
+
 =head1 EXAMPLES
 
 =head2 A line-based C<on_read> method
@@ -1298,7 +1329,7 @@ C<on_read> method extracts messages in such a protocol.
 
     return 0 unless length $$buffref >= 8; # "N n n" consumes 8 bytes
 
-    my ( $len, $x, $y ) = unpack $$buffref, "N n n";
+    my ( $len, $x, $y ) = unpack "N n n", $$buffref;
 
     return 0 unless length $$buffref >= 8 + $len;
 

@@ -1,27 +1,24 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2006-2011 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2006-2015 -- leonerd@leonerd.org.uk
 
 package IO::Async::Notifier;
 
 use strict;
 use warnings;
 
-our $VERSION = '0.65';
+our $VERSION = '0.66';
 
 use Carp;
 use Scalar::Util qw( weaken );
 
-use Future 0.22; # ->else_done
+use Future 0.26; # ->is_failed
+
+use IO::Async::Debug;
 
 # Perl 5.8.4 cannot do trampolines by modiying @_ then goto &$code
 use constant HAS_BROKEN_TRAMPOLINES => ( $] == "5.008004" );
-
-our $DEBUG = $ENV{IO_ASYNC_DEBUG} || 0;
-our $DEBUG_FD   = $ENV{IO_ASYNC_DEBUG_FD};
-our $DEBUG_FILE = $ENV{IO_ASYNC_DEBUG_FILE};
-our $DEBUG_FH;
 
 =head1 NAME
 
@@ -346,7 +343,7 @@ sub adopt_future
 
       delete $self->{IO_Async_Notifier__futures}{$fkey};
 
-      $self->invoke_error( $f->failure ) if $f->failure;
+      $self->invoke_error( $f->failure ) if $f->is_failed;
    }));
 
    return $f;
@@ -725,7 +722,7 @@ sub make_event_cb
    my $caller = caller;
 
    return $self->_capture_weakself( 
-      !$DEBUG ? $code : sub {
+      !$IO::Async::Debug::DEBUG ? $code : sub {
          my $self = $_[0];
          $self->_debug_printf_event( $caller, $event_name );
          goto &$code;
@@ -751,7 +748,7 @@ sub maybe_make_event_cb
    my $caller = caller;
 
    return $self->_capture_weakself(
-      !$DEBUG ? $code : sub {
+      !$IO::Async::Debug::DEBUG ? $code : sub {
          my $self = $_[0];
          $self->_debug_printf_event( $caller, $event_name );
          goto &$code;
@@ -776,7 +773,7 @@ sub invoke_event
    my $code = $self->can_event( $event_name )
       or croak "$self cannot handle $event_name event";
 
-   $self->_debug_printf_event( scalar caller, $event_name ) if $DEBUG;
+   $self->_debug_printf_event( scalar caller, $event_name ) if $IO::Async::Debug::DEBUG;
    return $code->( $self, @args );
 }
 
@@ -798,36 +795,11 @@ sub maybe_invoke_event
    my $code = $self->can_event( $event_name )
       or return undef;
 
-   $self->_debug_printf_event( scalar caller, $event_name ) if $DEBUG;
+   $self->_debug_printf_event( scalar caller, $event_name ) if $IO::Async::Debug::DEBUG;
    return [ $code->( $self, @args ) ];
 }
 
 =head1 DEBUGGING SUPPORT
-
-The following methods and behaviours are still experimental and may change or
-even be removed in future.
-
-Debugging support is enabled by an environment variable called
-C<IO_ASYNC_DEBUG> having a true value.
-
-When debugging is enabled, the C<make_event_cb> and C<invoke_event> methods
-(and their C<maybe_> variants) are altered such that when the event is fired,
-a debugging line is printed, using the C<debug_printf> method. This identifes
-the name of the event.
-
-By default, the line is only printed if the caller of one of these methods is
-the same package as the object is blessed into, allowing it to print the
-events of the most-derived class, without the extra verbosity of the
-lower-level events of its parent class used to create it. All calls regardless
-of caller can be printed by setting a number greater than 1 as the value of
-C<IO_ASYNC_DEBUG>.
-
-By default the debugging log goes to C<STDERR>, but two other environment
-variables can redirect it. If C<IO_ASYNC_DEBUG_FILE> is set, it names a file
-which will be opened for writing, and logging written into it. Otherwise, if
-C<IO_ASYNC_DEBUG_FD> is set, it gives a file descriptor number that logging
-should be written to. If opening the named file or file descriptor fails then
-the log will be written to C<STDERR> as normal.
 
 =cut
 
@@ -862,7 +834,7 @@ will produce a line of output:
 
 sub debug_printf
 {
-   $DEBUG or return;
+   $IO::Async::Debug::DEBUG or return;
 
    my $self = shift;
    my ( $format, @args ) = @_;
@@ -881,22 +853,7 @@ sub debug_printf
    s/^IO::Async::/Ia:/,
    s/^Net::Async::/Na:/ for @id;
 
-   $DEBUG_FH ||= do {
-      my $fh;
-      if( $DEBUG_FILE ) {
-         open $fh, ">", $DEBUG_FILE or undef $fh;
-      }
-      elsif( $DEBUG_FD ) {
-         $fh = IO::Handle->new;
-         $fh->fdopen( $DEBUG_FD, "w" ) or undef $fh;
-      }
-      $fh ||= \*STDERR;
-      $fh->autoflush;
-      $fh;
-   };
-
-   printf $DEBUG_FH "[%s] $format\n",
-      join("<-", @id), @args;
+   IO::Async::Debug::logf "[%s] $format\n", join("<-", @id), @args;
 }
 
 sub _debug_printf_event
@@ -906,7 +863,7 @@ sub _debug_printf_event
 
    my $class = ref $self;
 
-   if( $DEBUG > 1 or $class eq $caller ) {
+   if( $IO::Async::Debug::DEBUG > 1 or $class eq $caller ) {
       s/^IO::Async::Protocol::/IaP:/,
       s/^IO::Async::/Ia:/,
       s/^Net::Async::/Na:/ for my $str_caller = $caller;
