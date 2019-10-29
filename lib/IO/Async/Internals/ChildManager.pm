@@ -1,14 +1,14 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2007-2014 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2007-2018 -- leonerd@leonerd.org.uk
 
-package IO::Async::ChildManager;
+package IO::Async::Internals::ChildManager;
 
 use strict;
 use warnings;
 
-our $VERSION = '0.71';
+our $VERSION = '0.72';
 
 # Not a notifier
 
@@ -22,93 +22,6 @@ use Scalar::Util qw( weaken );
 use POSIX qw( _exit dup dup2 nice );
 
 use constant LENGTH_OF_I => length( pack( "I", 0 ) );
-
-=head1 NAME
-
-C<IO::Async::ChildManager> - facilitates the execution of child processes
-
-=head1 SYNOPSIS
-
-This object is used indirectly via an L<IO::Async::Loop>:
-
- use IO::Async::Loop;
-
- my $loop = IO::Async::Loop->new;
-
- ...
-
- $loop->run_child(
-    command => "/bin/ps",
-
-    on_finish => sub {
-       my ( $pid, $exitcode, $stdout, $stderr ) = @_;
-       my $status = ( $exitcode >> 8 );
-       print "ps [PID $pid] exited with status $status\n";
-    },
- );
-
- $loop->open_child(
-    command => [ "/bin/ping", "-c4", "some.host" ],
-
-    stdout => {
-       on_read => sub {
-          my ( $stream, $buffref, $eof ) = @_;
-          while( $$buffref =~ s/^(.*)\n// ) {
-             print "PING wrote: $1\n";
-          }
-          return 0;
-       },
-    },
-
-    on_finish => sub {
-       my ( $pid, $exitcode ) = @_;
-       my $status = ( $exitcode >> 8 );
-       ...
-    },
- );
-
- my ( $pipeRd, $pipeWr ) = IO::Async::OS->pipepair;
- $loop->spawn_child(
-    command => "/usr/bin/my-command",
-
-    setup => [
-       stdin  => [ "open", "<", "/dev/null" ],
-       stdout => $pipeWr,
-       stderr => [ "open", ">>", "/var/log/mycmd.log" ],
-       chdir  => "/",
-    ]
-
-    on_exit => sub {
-       my ( $pid, $exitcode ) = @_;
-       my $status = ( $exitcode >> 8 );
-       print "Command exited with status $status\n";
-    },
- );
-
- $loop->spawn_child(
-    code => sub {
-       do_something; # executes in a child process
-       return 1;
-    },
-
-    on_exit => sub {
-       my ( $pid, $exitcode, $dollarbang, $dollarat ) = @_;
-       my $status = ( $exitcode >> 8 );
-       print "Child process exited with status $status\n";
-       print " OS error was $dollarbang, exception was $dollarat\n";
-    },
- );
-
-=head1 DESCRIPTION
-
-This module extends the functionality of the containing L<IO::Async::Loop> to
-manage the execution of child processes. It acts as a central point to store
-PID values of currently-running children, and to call the appropriate
-continuation handler code when the process terminates. It provides useful
-wrapper methods that set up filehandles and other child process details, and
-to capture the child process's STDOUT and STDERR streams.
-
-=cut
 
 # Writing to variables of $> and $) have tricky ways to obtain error results
 sub setuid
@@ -175,72 +88,6 @@ sub new
    return $self;
 }
 
-=head1 METHODS
-
-When active, the following methods are available on the containing C<Loop>
-object.
-
-=cut
-
-=head2 spawn_child
-
-   $pid = $loop->spawn_child( %params )
-
-This method creates a new child process to run a given code block or command.
-The C<%params> hash takes the following keys:
-
-=over 8
-
-=item command => ARRAY or STRING
-
-Either a reference to an array containing the command and its arguments, or a
-plain string containing the command. This value is passed into perl's
-C<exec> function.
-
-=item code => CODE
-
-A block of code to execute in the child process. It will be called in scalar
-context inside an C<eval> block.
-
-=item setup => ARRAY
-
-A reference to an array which gives file descriptors to set up in the child
-process before running the code or command. See below.
-
-=item on_exit => CODE
-
-A continuation to be called when the child processes exits. It will be invoked
-in the following way:
-
- $on_exit->( $pid, $exitcode, $dollarbang, $dollarat )
-
-The second argument is passed the plain perl C<$?> value.
-
-=back
-
-Exactly one of the C<command> or C<code> keys must be specified.
-
-If the C<command> key is used, the given array or string is executed using the
-C<exec> function. 
-
-If the C<code> key is used, the return value will be used as the C<exit(2)>
-code from the child if it returns (or 255 if it returned C<undef> or thows an
-exception).
-
- Case          | ($exitcode >> 8)       | $dollarbang | $dollarat
- --------------+------------------------+-------------+----------
- exec succeeds | exit code from program |     0       |    ""
- exec fails    |         255            |     $!      |    ""
- $code returns |     return value       |     $!      |    ""
- $code dies    |         255            |     $!      |    $@
-
-It is usually more convenient to use the C<open_child> method in simple cases
-where an external program is being started in order to interact with it via
-file IO, or even C<run_child> when only the final result is required, rather
-than interaction while it is running.
-
-=cut
-
 sub spawn_child
 {
    my $self = shift;
@@ -297,119 +144,6 @@ sub spawn_child
    close( $writepipe );
    return $self->_spawn_in_parent( $readpipe, $kid, $on_exit );
 }
-
-=head2 C<setup> array
-
-This array gives a list of file descriptor operations to perform in the child
-process after it has been C<fork(2)>ed from the parent, before running the code
-or command. It consists of name/value pairs which are ordered; the operations
-are performed in the order given.
-
-=over 8
-
-=item fdI<n> => ARRAY
-
-Gives an operation on file descriptor I<n>. The first element of the array
-defines the operation to be performed:
-
-=over 4
-
-=item [ 'close' ]
-
-The file descriptor will be closed.
-
-=item [ 'dup', $io ]
-
-The file descriptor will be C<dup2(2)>ed from the given IO handle.
-
-=item [ 'open', $mode, $file ]
-
-The file descriptor will be opened from the named file in the given mode. The
-C<$mode> string should be in the form usually given to the C<open> function;
-such as '<' or '>>'.
-
-=item [ 'keep' ]
-
-The file descriptor will not be closed; it will be left as-is.
-
-=back
-
-A non-reference value may be passed as a shortcut, where it would contain the
-name of the operation with no arguments (i.e. for the C<close> and C<keep>
-operations).
-
-=item IO => ARRAY
-
-Shortcut for passing C<fdI<n>>, where I<n> is the fileno of the IO
-reference. In this case, the key must be a reference that implements the
-C<fileno> method. This is mostly useful for
-
- $handle => 'keep'
-
-=item fdI<n> => IO
-
-A shortcut for the C<dup> case given above.
-
-=item stdin => ...
-
-=item stdout => ...
-
-=item stderr => ...
-
-Shortcuts for C<fd0>, C<fd1> and C<fd2> respectively.
-
-=item env => HASH
-
-A reference to a hash to set as the child process's environment.
-
-Note that this will entirely set a new environment, completely replacing the
-existing one. If you want to simply add new keys or change the values of some
-keys without removing the other existing ones, you can simply copy C<%ENV>
-into the hash before setting new keys:
-
- env => {
-    %ENV,
-    ANOTHER => "key here",
- }
-
-=item nice => INT
-
-Change the child process's scheduling priority using C<POSIX::nice>.
-
-=item chdir => STRING
-
-Change the child process's working directory using C<chdir>.
-
-=item setuid => INT
-
-=item setgid => INT
-
-Change the child process's effective UID or GID.
-
-=item setgroups => ARRAY
-
-Change the child process's groups list, to those groups whose numbers are
-given in the ARRAY reference.
-
-On most systems, only the privileged superuser change user or group IDs.
-L<IO::Async> will B<NOT> check before detaching the child process whether
-this is the case.
-
-If setting both the primary GID and the supplementary groups list, it is
-suggested to set the primary GID first. Moreover, some operating systems may
-require that the supplementary groups list contains the primary GID.
-
-=back
-
-If no directions for what to do with C<stdin>, C<stdout> and C<stderr> are
-given, a default of C<keep> is implied. All other file descriptors will be
-closed, unless a C<keep> operation is given for them.
-
-If C<setuid> is used, be sure to place it after any other operations that
-might require superuser privileges, such as C<setgid> or opening special
-files.
-
-=cut
 
 sub _check_setup_and_canonicise
 {
@@ -697,11 +431,5 @@ sub _spawn_in_child
 
    return $exitvalue;
 }
-
-=head1 AUTHOR
-
-Paul Evans <leonerd@leonerd.org.uk>
-
-=cut
 
 0x55AA;
