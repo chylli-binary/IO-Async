@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use base qw( IO::Async::Timer );
 
-our $VERSION = '0.68';
+our $VERSION = '0.69';
 
 use Carp;
 
@@ -125,7 +125,9 @@ sub configure
 
 =cut
 
-=head2 $expired = $timer->is_expired
+=head2 is_expired
+
+   $expired = $timer->is_expired
 
 Returns true if the Timer has already expired.
 
@@ -161,7 +163,9 @@ sub _make_enqueueargs
    return after => $self->{delay};
 }
 
-=head2 $timer->reset
+=head2 reset
+
+   $timer->reset
 
 If the timer is running, restart the countdown period from now. If the timer
 is not running, this method has no effect.

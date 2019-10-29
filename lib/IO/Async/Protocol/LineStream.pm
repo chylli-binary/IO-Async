@@ -8,7 +8,7 @@ package IO::Async::Protocol::LineStream;
 use strict;
 use warnings;
 
-our $VERSION = '0.68';
+our $VERSION = '0.69';
 
 use base qw( IO::Async::Protocol::Stream );
 
@@ -114,7 +114,9 @@ sub on_read
 
 =cut
 
-=head2 $lineprotocol->write_line( $text )
+=head2 write_line
+
+   $lineprotocol->write_line( $text )
 
 Writes a line of text to the transport stream. The text will have the
 end-of-line marker appended to it; C<$text> should not end with it.

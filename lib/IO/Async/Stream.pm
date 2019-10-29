@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use 5.010; # //
 
-our $VERSION = '0.68';
+our $VERSION = '0.69';
 
 use base qw( IO::Async::Handle );
 
@@ -256,7 +256,7 @@ filehandle is write-ready. This is useful, for example, on streams that should
 contain up-to-date logging or console information.
 
 It currently defaults to false for any file handle, but future versions of
-C<IO::Async> may enable this by default on STDOUT and STDERR.
+L<IO::Async> may enable this by default on STDOUT and STDERR.
 
 =head2 read_len => INT
 
@@ -441,9 +441,13 @@ L<Future> instances.
 
 =cut
 
-=head2 $stream->want_readready_for_read( $set )
+=head2 want_readready_for_read
 
-=head2 $stream->want_readready_for_write( $set )
+=head2 want_readready_for_write
+
+   $stream->want_readready_for_read( $set )
+
+   $stream->want_readready_for_write( $set )
 
 Mutators for the C<want_readready> property on L<IO::Async::Handle>, which
 control whether the C<read> or C<write> behaviour should be continued once the
@@ -476,9 +480,13 @@ sub want_readready_for_write
    $self->want_readready( $self->{want} & WANT_ANY_READ ) if $self->read_handle;
 }
 
-=head2 $stream->want_writeready_for_write( $set )
+=head2 want_writeready_for_read
 
-=head2 $stream->want_writeready_for_read( $set )
+=head2 want_writeready_for_write
+
+   $stream->want_writeready_for_write( $set )
+
+   $stream->want_writeready_for_read( $set )
 
 Mutators for the C<want_writeready> property on L<IO::Async::Handle>, which
 control whether the C<write> or C<read> behaviour should be continued once the
@@ -527,11 +535,13 @@ sub _is_empty
    return !@{ $self->{writequeue} };
 }
 
-=head2 $stream->close
+=head2 close
+
+   $stream->close
 
 A synonym for C<close_when_empty>. This should not be used when the deferred
 wait behaviour is required, as the behaviour of C<close> may change in a
-future version of C<IO::Async>. Instead, call C<close_when_empty> directly.
+future version of L<IO::Async>. Instead, call C<close_when_empty> directly.
 
 =cut
 
@@ -541,7 +551,9 @@ sub close
    $self->close_when_empty;
 }
 
-=head2 $stream->close_when_empty
+=head2 close_when_empty
+
+   $stream->close_when_empty
 
 If the write buffer is empty, this method calls C<close> on the underlying IO
 handles, and removes the stream from its containing loop. If the write buffer
@@ -565,7 +577,9 @@ sub close_when_empty
    $self->{stream_closing} = 1;
 }
 
-=head2 $stream->close_now
+=head2 close_now
+
+   $stream->close_now
 
 This method immediately closes the underlying IO handles and removes the
 stream from the containing loop. It will not wait to flush the remaining data
@@ -587,9 +601,13 @@ sub close_now
    $self->SUPER::close;
 }
 
-=head2 $eof = $stream->is_read_eof
+=head2 is_read_eof
 
-=head2 $eof = $stream->is_write_eof
+=head2 is_write_eof
+
+   $eof = $stream->is_read_eof
+
+   $eof = $stream->is_write_eof
 
 Returns true after an EOF condition is reported on either the read or the
 write handle, respectively.
@@ -608,7 +626,9 @@ sub is_write_eof
    return $self->{write_eof};
 }
 
-=head2 $stream->write( $data, %params )
+=head2 write
+
+   $stream->write( $data, %params )
 
 This method adds data to the outgoing data queue, or writes it immediately,
 according to the C<autoflush> parameter.
@@ -690,7 +710,9 @@ C<on_flush> continuation will be invoked, if supplied. This can be used to
 obtain a marker, to invoke some code once the output queue has been flushed up
 to this point.
 
-=head2 $stream->write( ... )->get
+=head2 write (scalar)
+
+   $stream->write( ... )->get
 
 If called in non-void context, this method returns a L<Future> which will
 complete (with no value) when the write operation has been flushed. This may
@@ -1032,7 +1054,9 @@ sub on_read_low_watermark
    $self->want_readready_for_read( 1 );
 }
 
-=head2 $stream->push_on_read( $on_read )
+=head2 push_on_read
+
+   $stream->push_on_read( $on_read )
 
 Pushes a new temporary C<on_read> handler to the end of the queue. This queue,
 if non-empty, is used to provide C<on_read> event handling code in preference
@@ -1119,9 +1143,13 @@ sub _read_future
    return $f;
 }
 
-=head2 ( $string, $eof ) = $stream->read_atmost( $len )->get
+=head2 read_atmost
 
-=head2 ( $string, $eof ) = $stream->read_exactly( $len )->get
+=head2 read_exactly
+
+   ( $string, $eof ) = $stream->read_atmost( $len )->get
+
+   ( $string, $eof ) = $stream->read_exactly( $len )->get
 
 Completes the C<Future> when the read buffer contains C<$len> or more
 characters of input. C<read_atmost> will also complete after the first
@@ -1161,7 +1189,9 @@ sub read_exactly
    return $f;
 }
 
-=head2 ( $string, $eof ) = $stream->read_until( $end )->get
+=head2 read_until
+
+   ( $string, $eof ) = $stream->read_until( $end )->get
 
 Completes the C<Future> when the read buffer contains a match for C<$end>,
 which may either be a plain string or a compiled C<Regexp> reference. Yields
@@ -1195,7 +1225,9 @@ sub read_until
    return $f;
 }
 
-=head2 ( $string, $eof ) = $stream->read_until_eof->get
+=head2 read_until_eof
+
+   ( $string, $eof ) = $stream->read_until_eof->get
 
 Completes the C<Future> when the stream is eventually closed at EOF, and
 yields all of the data that was available.
@@ -1221,11 +1253,17 @@ sub read_until_eof
 
 =cut
 
-=head2 $stream = IO::Async::Stream->new_for_stdin
+=head2 new_for_stdin
 
-=head2 $stream = IO::Async::Stream->new_for_stdout
+=head2 new_for_stdout
 
-=head2 $stream = IO::Async::Stream->new_for_stdio
+=head2 new_for_stdio
+
+   $stream = IO::Async::Stream->new_for_stdin
+
+   $stream = IO::Async::Stream->new_for_stdout
+
+   $stream = IO::Async::Stream->new_for_stdio
 
 Return a C<IO::Async::Stream> object preconfigured with the correct
 C<read_handle>, C<write_handle> or both.
@@ -1237,7 +1275,9 @@ sub new_for_stdout { shift->new( write_handle => \*STDOUT, @_ ) }
 
 sub new_for_stdio { shift->new( read_handle => \*STDIN, write_handle => \*STDOUT, @_ ) }
 
-=head2 $future = $stream->connect( %args )
+=head2 connect
+
+   $future = $stream->connect( %args )
 
 A convenient wrapper for calling the C<connect> method on the underlying
 L<IO::Async::Loop> object, passing the C<socktype> hint as C<stream> if not

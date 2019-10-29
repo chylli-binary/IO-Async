@@ -10,7 +10,7 @@ use warnings;
 use 5.010;
 use base qw( IO::Async::Function );
 
-our $VERSION = '0.68';
+our $VERSION = '0.69';
 
 # Socket 2.006 fails to getaddrinfo() AI_NUMERICHOST properly on MSWin32
 use Socket 2.007 qw(
@@ -39,7 +39,7 @@ C<IO::Async::Resolver> - performing name resolutions asynchronously
 
 =head1 SYNOPSIS
 
-This object is used indirectly via an C<IO::Async::Loop>:
+This object is used indirectly via an L<IO::Async::Loop>:
 
  use IO::Async::Loop;
  my $loop = IO::Async::Loop->new;
@@ -64,12 +64,12 @@ This object is used indirectly via an C<IO::Async::Loop>:
 
 =head1 DESCRIPTION
 
-This module extends an C<IO::Async::Loop> to use the system's name resolver
+This module extends an L<IO::Async::Loop> to use the system's name resolver
 functions asynchronously. It provides a number of named resolvers, each one
 providing an asynchronous wrapper around a single resolver function.
 
 Because the system may not provide asynchronous versions of its resolver
-functions, this class is implemented using a C<IO::Async::Function> object
+functions, this class is implemented using a L<IO::Async::Function> object
 that wraps the normal (blocking) functions. In this case, name resolutions
 will be performed asynchronously from the rest of the program, but will likely
 be done by a single background worker process, so will be processed in the
@@ -77,7 +77,7 @@ order they were requested; a single slow lookup will hold up the queue of
 other requests behind it. To mitigate this, multiple worker processes can be
 used; see the C<workers> argument to the constructor.
 
-The C<idle_timeout> parameter for the underlying C<IO::Async::Function> object
+The C<idle_timeout> parameter for the underlying L<IO::Async::Function> object
 is set to a default of 30 seconds, and C<min_workers> is set to 0. This
 ensures that there are no spare processes sitting idle during the common case
 of no outstanding requests.
@@ -121,7 +121,9 @@ L<Future> instances.
 
 =cut
 
-=head2 @result = $loop->resolve( %params )->get
+=head2 resolve
+
+   @result = $loop->resolve( %params )->get
 
 Performs a single name resolution operation, as given by the keys in the hash.
 
@@ -152,7 +154,9 @@ error details specific to the resolver in question.
 
  ->fail( $message, resolve => $type => @details )
 
-=head2 $resolver->resolve( %params )
+=head2 resolve (void)
+
+   $resolver->resolve( %params )
 
 When not returning a future, additional parameters can be given containing the
 continuations to invoke on success or failure:
@@ -224,7 +228,9 @@ sub resolve
    $self->adopt_future( $future->else( sub { Future->done } ) );
 }
 
-=head2 @addrs = $resolver->getaddrinfo( %args )->get
+=head2 getaddrinfo
+
+   @addrs = $resolver->getaddrinfo( %args )->get
 
 A shortcut wrapper around the C<getaddrinfo> resolver, taking its arguments in
 a more convenient form.
@@ -281,7 +287,9 @@ like an IPv4 or IPv6 string, a synchronous lookup will first be performed
 using the C<AI_NUMERICHOST> flag. If this gives an C<EAI_NONAME> error, then
 the lookup is performed asynchronously instead.
 
-=head2 $resolver->getaddrinfo( %args )
+=head2 getaddrinfo (void)
+
+   $resolver->getaddrinfo( %args )
 
 When not returning a future, additional parameters can be given containing the
 continuations to invoke on success or failure:
@@ -377,7 +385,9 @@ sub getaddrinfo
    $self->adopt_future( $future->else( sub { Future->done } ) );
 }
 
-=head2 ( $host, $service ) = $resolver->getnameinfo( %args )->get
+=head2 getnameinfo
+
+   ( $host, $service ) = $resolver->getnameinfo( %args )->get
 
 A shortcut wrapper around the C<getnameinfo> resolver, taking its arguments in
 a more convenient form.
@@ -420,7 +430,9 @@ As a specific optimisation, this method will try to perform a lookup of
 numeric values synchronously, rather than asynchronously, if both the
 C<NI_NUMERICHOST> and C<NI_NUMERICSERV> flags are given.
 
-=head2 $resolver->getnameinfo( %args )
+=head2 getnameinfo (void)
+
+   $resolver->getnameinfo( %args )
 
 When not returning a future, additional parameters can be given containing the
 continuations to invoke on success or failure:
@@ -664,7 +676,7 @@ would likely make calls to OS functions to provide an answer. In traditional
 Unix style, a pair of functions are provided that each look up the entity by
 either type of key, where both functions return the same type of list. This is
 purely a convention, and is in no way required or enforced by the
-C<IO::Async::Resolver> itself.
+L<IO::Async::Resolver> itself.
 
  @numbers = qw( zero  one   two   three four
                 five  six   seven eight nine  );

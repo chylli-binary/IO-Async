@@ -8,7 +8,7 @@ package IO::Async::Future;
 use strict;
 use warnings;
 
-our $VERSION = '0.68';
+our $VERSION = '0.69';
 
 use base qw( Future );
 Future->VERSION( '0.05' ); # to respect subclassing
@@ -48,15 +48,15 @@ New C<IO::Async::Future> objects should be constructed by using the following
 methods on the C<Loop>. For more detail see the L<IO::Async::Loop>
 documentation.
 
-=head2 $future = $loop->new_future
+   $future = $loop->new_future
 
 Returns a new pending Future.
 
-=head2 $future = $loop->delay_future( %args )
+   $future = $loop->delay_future( %args )
 
 Returns a new Future that will become done at a given time.
 
-=head2 $future = $loop->timeout_future( %args )
+   $future = $loop->timeout_future( %args )
 
 Returns a new Future that will become failed at a given time.
 
@@ -81,9 +81,11 @@ sub new
 
 =cut
 
-=head2 $loop = $future->loop
+=head2 loop
 
-Returns the underlying C<IO::Async::Loop> object.
+   $loop = $future->loop
+
+Returns the underlying L<IO::Async::Loop> object.
 
 =cut
 
@@ -99,7 +101,9 @@ sub await
    $self->{loop}->loop_once;
 }
 
-=head2 $future->done_later( @result )
+=head2 done_later
+
+   $future->done_later( @result )
 
 A shortcut to calling the C<done> method in a C<later> idle watch on the
 underlying Loop object. Ensures that a returned Future object is not ready
@@ -119,7 +123,9 @@ sub done_later
    return $self;
 }
 
-=head2 $future->fail_later( $exception, @details )
+=head2 fail_later
+
+   $future->fail_later( $exception, @details )
 
 A shortcut to calling the C<fail> method in a C<later> idle watch on the
 underlying Loop object. Ensures that a returned Future object is not ready

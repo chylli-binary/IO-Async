@@ -8,7 +8,7 @@ package IO::Async::Socket;
 use strict;
 use warnings;
 
-our $VERSION = '0.68';
+our $VERSION = '0.69';
 
 use base qw( IO::Async::Handle );
 
@@ -204,7 +204,9 @@ sub _add_to_loop
 
 =cut
 
-=head2 $socket->send( $data, $flags, $addr )
+=head2 send
+
+   $socket->send( $data, $flags, $addr )
 
 This method adds a segment of data to be sent, or sends it immediately,
 according to the C<autoflush> parameter. C<$flags> and C<$addr> are optional.

@@ -1,5 +1,16 @@
 Revision history for IO-Async
 
+0.69    2015/11/09 19:56:58
+        [CHANGES]
+         * Use Future->catch instead of poorly-implemented string-eq test
+         * Use L<...> instead of C<...> in docs where appropriate (RT107417)
+           (thanks Arthur Axel 'fREW' Schmidt)
+
+        [BUGFIXES]
+         * Don't silently swallow Listener acceptor failures (RT107806)
+         * Don't silently swallow other ->connect errors
+         * Remember to ->unwatch_io before setting IaHandle's handle to undef
+
 0.68    2015/07/31 20:07:48
         [CHANGES]
          * Allow IO::Async::Function body to 'die' with an ARRAYref to set

@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use base qw( IO::Async::Notifier );
 
-our $VERSION = '0.68';
+our $VERSION = '0.69';
 
 use Carp;
 
@@ -30,7 +30,7 @@ A Channel object is shared between the main process of the program and the
 process running within the Routine. In the main process it will be used in
 asynchronous mode, and in the Routine process it will be used in synchronous
 mode. In asynchronous mode all methods return immediately and use
-C<IO::Async>-style futures or callback functions. In synchronous within the
+L<IO::Async>-style futures or callback functions. In synchronous within the
 Routine process the methods block until they are ready and may be used for
 flow-control within the routine. Alternatively, a Channel may be shared
 between two different Routine objects, and not used directly by the
@@ -73,7 +73,9 @@ C<send_encoded> instead.
 
 =cut
 
-=head2 $channel = IO::Async::Channel->new
+=head2 new
+
+   $channel = IO::Async::Channel->new
 
 Returns a new C<IO::Async::Channel> object. This object reference itself
 should be shared by both sides of a C<fork()>ed process. After C<fork()> the
@@ -82,7 +84,7 @@ either end.
 
 While this object does in fact inherit from L<IO::Async::Notifier>, it should
 not be added to a Loop object directly; event management will be handled by
-its containing C<IO::Async::Routine> object.
+its containing L<IO::Async::Routine> object.
 
 =cut
 
@@ -93,9 +95,11 @@ L<Future> instances.
 
 =cut
 
-=head2 $channel->configure( %params )
+=head2 configure
 
-Similar to the standard C<configure> method on C<IO::Async::Notifier>, this is
+   $channel->configure( %params )
+
+Similar to the standard C<configure> method on L<IO::Async::Notifier>, this is
 used to change details of the Channel's operation.
 
 =over 4
@@ -176,7 +180,9 @@ sub _make_codec_Sereal
       sub { ( $decoder ||= Sereal::Decoder->new )->decode( $_[0] ) };
 }
 
-=head2 $channel->send( $data )
+=head2 send
+
+   $channel->send( $data )
 
 Pushes the data stored in the given Perl reference into the FIFO of the
 Channel, where it can be received by the other end. When called on a
@@ -194,7 +200,9 @@ sub send
    $self->send_encoded( $self->{encode}->( $data ) );
 }
 
-=head2 $channel->send_encoded( $record )
+=head2 send_encoded
+
+   $channel->send_encoded( $record )
 
 A variant of the C<send> method; this method pushes the byte record given.
 This should be the result of a call to C<encode>.
@@ -214,7 +222,9 @@ sub send_encoded
    return $self->_send_async( $bytes ) if $self->{mode} eq "async";
 }
 
-=head2 $record = $channel->encode( $data )
+=head2 encode
+
+   $record = $channel->encode( $data )
 
 Takes a Perl reference and returns a serialised string that can be passed to
 C<send_encoded>. The following two forms are equivalent
@@ -226,7 +236,7 @@ This is provided for the use-case where data needs to be serialised into a
 fixed string to "snapshot it" but not sent yet; the returned string can be
 saved and sent at a later time.
 
-=head2 $record = IO::Async::Channel->encode( $data )
+   $record = IO::Async::Channel->encode( $data )
 
 This can also be used as a class method, in case it is inconvenient to operate
 on a particular object instance, or when one does not exist yet. In this case
@@ -244,7 +254,9 @@ sub encode
       do { require Storable; Storable::freeze( $data ) };
 }
 
-=head2 $channel->send_frozen( $record )
+=head2 send_frozen
+
+   $channel->send_frozen( $record )
 
 Legacy name for C<send_encoded>. This is no longer preferred as it expects
 the data to be encoded using C<Storable>, which prevents (or at least makes
@@ -255,7 +267,9 @@ should not be used in new code and may be removed in a later version.
 
 *send_frozen = \&send_encoded;
 
-=head2 $data = $channel->recv
+=head2 recv
+
+   $data = $channel->recv
 
 When called on a synchronous mode Channel this method will block until a Perl
 reference value is available from the other end and then return it. If the
@@ -264,14 +278,14 @@ be passed and all Perl references are true the truth of the result of this
 method can be used to detect that the channel is still open and has not yet
 been closed.
 
-=head2 $data = $channel->recv->get
+   $data = $channel->recv->get
 
 When called on an asynchronous mode Channel this method returns a future which
 will eventually yield the next Perl reference value that becomes available
 from the other end. If the Channel is closed, the future will fail with an
 C<eof> failure.
 
-=head2 $channel->recv( %args )
+   $channel->recv( %args )
 
 When not returning a future, takes the following named arguments:
 
@@ -305,7 +319,9 @@ sub recv
    return $self->_recv_async( @_ ) if $self->{mode} eq "async";
 }
 
-=head2 $channel->close
+=head2 close
+
+   $channel->close
 
 Closes the channel. Causes a pending C<recv> on the other end to return undef
 or the queued C<on_eof> callbacks to be invoked.

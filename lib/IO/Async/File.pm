@@ -9,7 +9,7 @@ use 5.010; # //
 use strict;
 use warnings;
 
-our $VERSION = '0.68';
+our $VERSION = '0.69';
 
 use base qw( IO::Async::Timer::Periodic );
 
@@ -197,7 +197,9 @@ sub on_tick
 
 =cut
 
-=head2 $handle = $file->handle
+=head2 handle
+
+   $handle = $file->handle
 
 Returns the filehandle currently associated with the instance; either the one
 passed to the C<handle> parameter, or opened from the C<filename> parameter.

@@ -8,7 +8,7 @@ package IO::Async::Protocol;
 use strict;
 use warnings;
 
-our $VERSION = '0.68';
+our $VERSION = '0.69';
 
 use base qw( IO::Async::Notifier );
 
@@ -55,7 +55,7 @@ The following named parameters may be passed to C<new> or C<configure>:
 
 =head2 transport => IO::Async::Handle
 
-The C<IO::Async::Handle> to delegate communications to.
+The L<IO::Async::Handle> to delegate communications to.
 
 =head2 on_closed => CODE
 
@@ -102,7 +102,9 @@ sub configure
 
 =cut
 
-=head2 $transport = $protocol->transport
+=head2 transport
+
+   $transport = $protocol->transport
 
 Returns the stored transport object
 
@@ -114,7 +116,9 @@ sub transport
    return $self->{transport};
 }
 
-=head2 $protocol->connect( %args )
+=head2 connect
+
+   $protocol->connect( %args )
 
 Sets up a connection to a peer, and configures the underlying C<transport> for
 the Protocol.
@@ -144,7 +148,7 @@ invoked. This is provided as a convenient shortcut.
 
 =back
 
-Other arguments will be passed to the underlying C<IO::Async::Loop> C<connect>
+Other arguments will be passed to the underlying L<IO::Async::Loop> C<connect>
 call.
 
 =cut
@@ -208,7 +212,9 @@ at some point within the code.
 
 =cut
 
-=head2 $protocol->setup_transport( $transport )
+=head2 setup_transport
+
+   $protocol->setup_transport( $transport )
 
 Called by C<configure> when a new C<transport> object is given, this method
 should perform whatever setup is required to wire the new transport object
@@ -233,7 +239,9 @@ sub setup_transport
    );
 }
 
-=head2 $protocol->teardown_transport( $transport )
+=head2 teardown_transport
+
+   $protocol->teardown_transport( $transport )
 
 The reverse of C<setup_transport>; called by C<configure> when a previously
 set-up transport object is about to be replaced.

@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use base qw( IO::Async::Notifier );
 
-our $VERSION = '0.68';
+our $VERSION = '0.69';
 
 use Carp;
 
@@ -45,7 +45,9 @@ L<IO::Async::Timer::Periodic> - event callback at regular intervals
 
 =cut
 
-=head2 $timer = IO::Async::Timer->new( %args )
+=head2 new
+
+   $timer = IO::Async::Timer->new( %args )
 
 Constructs a particular subclass of C<IO::Async::Timer> object, and returns
 it. This constructor is provided for backward compatibility to older code
@@ -98,7 +100,9 @@ sub _remove_from_loop
 
 =cut
 
-=head2 $running = $timer->is_running
+=head2 is_running
+
+   $running = $timer->is_running
 
 Returns true if the Timer has been started, and has not yet expired, or been
 stopped.
@@ -112,7 +116,9 @@ sub is_running
    defined $self->{id};
 }
 
-=head2 $timer->start
+=head2 start
+
+   $timer->start
 
 Starts the Timer. Throws an error if it was already running.
 
@@ -151,7 +157,9 @@ sub start
    return $self;
 }
 
-=head2 $timer->stop
+=head2 stop
+
+   $timer->stop
 
 Stops the Timer if it is running. If it has not yet been added to the C<Loop>
 but there is a start pending, this will cancel it.

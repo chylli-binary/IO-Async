@@ -8,7 +8,7 @@ package IO::Async::Loop::Poll;
 use strict;
 use warnings;
 
-our $VERSION = '0.68';
+our $VERSION = '0.69';
 use constant API_VERSION => '0.49';
 
 use base qw( IO::Async::Loop );
@@ -62,7 +62,7 @@ program already using an C<IO::Poll> object.
 
 =head1 DESCRIPTION
 
-This subclass of C<IO::Async::Loop> uses the C<poll(2)> system call to perform
+This subclass of L<IO::Async::Loop> uses the C<poll(2)> system call to perform
 read-ready and write-ready tests.
 
 By default, this loop will use the underlying C<poll()> system call directly,
@@ -97,7 +97,9 @@ the notifiers.
 
 =cut
 
-=head2 $loop = IO::Async::Loop::Poll->new( %args )
+=head2 new
+
+   $loop = IO::Async::Loop::Poll->new( %args )
 
 This function returns a new instance of a C<IO::Async::Loop::Poll> object. It
 takes the following named arguments:
@@ -133,7 +135,9 @@ sub new
 
 =cut
 
-=head2 $count = $loop->post_poll
+=head2 post_poll
+
+   $count = $loop->post_poll
 
 This method checks the returned event list from a C<IO::Poll::poll> call,
 and calls any of the notification methods or callbacks that are appropriate.
@@ -187,7 +191,9 @@ sub post_poll
    return $count;
 }
 
-=head2 $count = $loop->loop_once( $timeout )
+=head2 loop_once
+
+   $count = $loop->loop_once( $timeout )
 
 This method calls the C<poll> method on the stored C<IO::Poll> object,
 passing in the value of C<$timeout>, and then runs the C<post_poll> method

@@ -8,7 +8,7 @@ package IO::Async::Routine;
 use strict;
 use warnings;
 
-our $VERSION = '0.68';
+our $VERSION = '0.69';
 
 use base qw( IO::Async::Notifier );
 
@@ -74,7 +74,7 @@ A choice of detachment model is available, with options being a C<fork()>ed
 child process, or a thread. In both cases the code contained within the
 Routine is free to make blocking calls without stalling the rest of the
 program. This makes it useful for using existing code which has no option not
-to block within an C<IO::Async>-based program.
+to block within an L<IO::Async>-based program.
 
 Code running inside a C<fork()>-based Routine runs within its own process; it
 is isolated from the rest of the program in terms of memory, CPU time, and
@@ -132,12 +132,12 @@ C<fork> is preferred if it is available, otherwise C<thread>.
 
 =head2 channels_in => ARRAY of IO::Async::Channel
 
-ARRAY reference of C<IO::Async::Channel> objects to set up for passing values
+ARRAY reference of L<IO::Async::Channel> objects to set up for passing values
 in to the Routine.
 
 =head2 channels_out => ARRAY of IO::Async::Channel
 
-ARRAY reference of C<IO::Async::Channel> objects to set up for passing values
+ARRAY reference of L<IO::Async::Channel> objects to set up for passing values
 out of the Routine.
 
 =head2 code => CODE
@@ -382,7 +382,9 @@ sub _setup_thread
 
 =cut
 
-=head2 $id = $routine->id
+=head2 id
+
+   $id = $routine->id
 
 Returns an ID string that uniquely identifies the Routine out of all the
 currently-running ones. (The ID of already-exited Routines may be reused,
@@ -396,7 +398,9 @@ sub id
    return $self->{id};
 }
 
-=head2 $model = $routine->model
+=head2 model
+
+   $model = $routine->model
 
 Returns the detachment model in use by the Routine.
 
@@ -408,7 +412,9 @@ sub model
    return $self->{model};
 }
 
-=head2 $routine->kill( $signal )
+=head2 kill
+
+   $routine->kill( $signal )
 
 Sends the specified signal to the routine code. This is either implemented by
 C<CORE::kill()> or C<threads::kill> as required. Note that in the thread case

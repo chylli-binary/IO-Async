@@ -8,7 +8,7 @@ package IO::Async::Protocol::Stream;
 use strict;
 use warnings;
 
-our $VERSION = '0.68';
+our $VERSION = '0.69';
 
 use base qw( IO::Async::Protocol );
 
@@ -64,13 +64,13 @@ for implementing stream-based protocols. It provides an interface similar to
 L<IO::Async::Stream>, primarily, a C<write> method and an C<on_read> event
 handler.
 
-It contains an instance of an C<IO::Async::Stream> object which it uses for
+It contains an instance of an L<IO::Async::Stream> object which it uses for
 actual communication, rather than being a subclass of it, allowing a level of
 independence from the actual stream being used. For example, the stream may
 actually be an L<IO::Async::SSLStream> to allow the protocol to be used over
 SSL.
 
-As with C<IO::Async::Stream>, it is required that by the time the protocol
+As with L<IO::Async::Stream>, it is required that by the time the protocol
 object is added to a Loop, that it either has an C<on_read> method, or has
 been configured with an C<on_read> callback handler.
 
@@ -87,7 +87,7 @@ references in parameters:
 
 =head2 on_write_eof
 
-The event handlers are invoked identically to C<IO::Async::Stream>.
+The event handlers are invoked identically to L<IO::Async::Stream>.
 
 =head2 on_closed
 
@@ -112,8 +112,8 @@ CODE references for the events.
 =head2 handle => IO
 
 A shortcut for the common case where the transport only needs to be a plain
-C<IO::Async::Stream> object. If this argument is provided without a
-C<transport> object, a new C<IO::Async::Stream> object will be built around
+L<IO::Async::Stream> object. If this argument is provided without a
+C<transport> object, a new L<IO::Async::Stream> object will be built around
 the given IO handle, and used as the transport.
 
 =cut
@@ -187,7 +187,9 @@ sub teardown_transport
 
 =cut
 
-=head2 $protocol->write( $data )
+=head2 write
+
+   $protocol->write( $data )
 
 Writes the given data by calling the C<write> method on the contained
 transport stream.
@@ -211,10 +213,12 @@ sub write
    $transport->write( $data, %args );
 }
 
-=head2 $protocol->connect( %args )
+=head2 connect
+
+   $protocol->connect( %args )
 
 Sets up a connection to a peer, and configures the underlying C<transport> for
-the Protocol. Calls C<IO::Async::Protocol> C<connect> with C<socktype> set to
+the Protocol. Calls L<IO::Async::Protocol> C<connect> with C<socktype> set to
 C<"stream">.
 
 =cut

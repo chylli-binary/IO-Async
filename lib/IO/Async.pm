@@ -12,7 +12,7 @@ use warnings;
 # It is provided simply to keep CPAN happy:
 #   cpan -i IO::Async
 
-our $VERSION = '0.68';
+our $VERSION = '0.69';
 
 =head1 NAME
 
@@ -93,7 +93,7 @@ class automatically handles reading of incoming data into the incoming buffer,
 and writing of the outgoing buffer. Methods or callbacks are used to inform
 when new incoming data is available, or when the outgoing buffer is empty.
 
-While stream-based sockets can be handled using using C<IO::Async::Stream>,
+While stream-based sockets can be handled using using L<IO::Async::Stream>,
 datagram or raw sockets do not provide a bytestream. For these, the
 L<IO::Async::Socket> class is another subclass of L<IO::Async::Handle> which
 maintains an outgoing packet queue, and informs of packet receipt using a
@@ -167,7 +167,7 @@ to implement backticks C<``>).
 The L<IO::Async::File> object observes changes to C<stat(2)> properties of a
 file, directory, or other filesystem object. It invokes callbacks when
 properties change. This is used by L<IO::Async::FileStream> which presents
-the same events as a C<IO::Async::Stream> but operates on a regular file on
+the same events as a L<IO::Async::Stream> but operates on a regular file on
 the filesystem, observing it for updates.
 
 =head2 Asynchronous Co-routines and Functions
@@ -206,7 +206,7 @@ an asynchronous program.
 
 An L<IO::Async::Future> object represents a single outstanding action that is
 yet to complete, such as a name resolution operation or a socket connection.
-It stands in contrast to a C<IO::Async::Notifier>, which is an object that
+It stands in contrast to a L<IO::Async::Notifier>, which is an object that
 represents an ongoing source of activity, such as a readable filehandle of
 bytes or a POSIX signal.
 
@@ -262,7 +262,7 @@ might be useful on Win32.
 =item *
 
 Consider some form of persistent object wrapper in the form of an
-C<IO::Async::Object>, based on C<IO::Async::Routine>.
+C<IO::Async::Object>, based on L<IO::Async::Routine>.
 
 =item *
 
@@ -271,12 +271,12 @@ C<IO::Async::Protocol::Datagram>
 =item *
 
 Support for watching filesystem entries for change. Extract logic from
-C<IO::Async::File> and define a Loop watch/unwatch method pair.
+L<IO::Async::File> and define a Loop watch/unwatch method pair.
 
 =item *
 
-Define more C<Future>-returning methods. Consider also one-shot Futures on
-things like C<IO::Async::Process> exits, or C<IO::Async::Handle> close.
+Define more L<Future>-returning methods. Consider also one-shot Futures on
+things like L<IO::Async::Process> exits, or L<IO::Async::Handle> close.
 
 =back
 

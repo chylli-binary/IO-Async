@@ -8,7 +8,7 @@ package IO::Async::OS;
 use strict;
 use warnings;
 
-our $VERSION = '0.68';
+our $VERSION = '0.69';
 
 our @ISA = qw( IO::Async::OS::_Base );
 
@@ -116,7 +116,9 @@ C<IO_ASYNC_NO_THREADS>.
 
 =cut
 
-=head2 $family = IO::Async::OS->getfamilybyname( $name )
+=head2 getfamilybyname
+
+   $family = IO::Async::OS->getfamilybyname( $name )
 
 Return a protocol family value based on the given name. If C<$name> looks like
 a number it will be returned as-is. The string values C<inet>, C<inet6> and
@@ -140,7 +142,9 @@ sub getfamilybyname
    croak "Unrecognised socket family name '$name'";
 }
 
-=head2 $socktype = IO::Async::OS->getsocktypebyname( $name )
+=head2 getsocktypebyname
+
+   $socktype = IO::Async::OS->getsocktypebyname( $name )
 
 Return a socket type value based on the given name. If C<$name> looks like a
 number it will be returned as-is. The string values C<stream>, C<dgram> and
@@ -201,7 +205,9 @@ sub socket
    return IO::Socket->new->socket( $family, $socktype, $proto );
 }
 
-=head2 ( $S1, $S2 ) = IO::Async::OS->socketpair( $family, $socktype, $proto )
+=head2 socketpair
+
+   ( $S1, $S2 ) = IO::Async::OS->socketpair( $family, $socktype, $proto )
 
 An abstraction of the C<socketpair(2)> syscall, where any argument may be
 missing (or given as C<undef>).
@@ -264,7 +270,9 @@ sub socketpair
    return ( $S1, $S2 );
 }
 
-=head2 ( $rd, $wr ) = IO::Async::OS->pipepair
+=head2 pipepair
+
+   ( $rd, $wr ) = IO::Async::OS->pipepair
 
 An abstraction of the C<pipe(2)> syscall, which returns the two new handles.
 
@@ -278,7 +286,9 @@ sub pipepair
    return ( $rd, $wr );
 }
 
-=head2 ( $rdA, $wrA, $rdB, $wrB ) = IO::Async::OS->pipequad
+=head2 pipequad
+
+   ( $rdA, $wrA, $rdB, $wrB ) = IO::Async::OS->pipequad
 
 This method is intended for creating two pairs of filehandles that are linked
 together, suitable for passing as the STDIN/STDOUT pair to a child process.
@@ -290,7 +300,7 @@ preferred, in which case C<$rdA> and C<$wrB> will actually be the same
 filehandle, as will C<$rdB> and C<$wrA>. This saves a file descriptor in the
 parent process.
 
-When creating a C<IO::Async::Stream> or subclass of it, the C<read_handle>
+When creating a L<IO::Async::Stream> or subclass of it, the C<read_handle>
 and C<write_handle> parameters should always be used.
 
  my ( $childRd, $myWr, $myRd, $childWr ) = IO::Async::OS->pipequad;
@@ -326,7 +336,9 @@ sub pipequad
    return ( $rdA, $wrA, $rdB, $wrB );
 }
 
-=head2 $signum = IO::Async::OS->signame2num( $signame )
+=head2 signame2num
+
+   $signum = IO::Async::OS->signame2num( $signame )
 
 This utility method converts a signal name (such as "TERM") into its system-
 specific signal number. This may be useful to pass to C<POSIX::SigSet> or use
@@ -363,7 +375,9 @@ sub signame2num
    return $sig_num{$signame};
 }
 
-=head2 ( $family, $socktype, $protocol, $addr ) = IO::Async::OS->extract_addrinfo( $ai )
+=head2 extract_addrinfo
+
+   ( $family, $socktype, $protocol, $addr ) = IO::Async::OS->extract_addrinfo( $ai )
 
 Given an ARRAY or HASH reference value containing an addrinfo, returns a
 family, socktype and protocol argument suitable for a C<socket> call and an
@@ -522,9 +536,13 @@ to store other data it requires.
 
 =cut
 
-=head2 IO::Async::OS->loop_watch_signal( $loop, $signal, $code )
+=head2 loop_watch_signal
 
-=head2 IO::Async::OS->loop_unwatch_signal( $loop, $signal )
+=head2 loop_unwatch_signal
+
+   IO::Async::OS->loop_watch_signal( $loop, $signal, $code )
+
+   IO::Async::OS->loop_unwatch_signal( $loop, $signal )
 
 Used to implement the C<watch_signal> / C<unwatch_signal> Loop pair.
 
@@ -580,7 +598,9 @@ sub loop_unwatch_signal
    undef $SIG{$signal};
 }
 
-=head2 @fds = IO::Async::OS->potentially_open_fds
+=head2 potentially_open_fds
+
+   @fds = IO::Async::OS->potentially_open_fds
 
 Returns a list of filedescriptors which might need closing. By default this
 will return C<0 .. _SC_OPEN_MAX>. OS-specific subclasses may have a better

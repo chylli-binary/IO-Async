@@ -6,7 +6,7 @@ use Module::Build;
 my $build = Module::Build->new(
    module_name => 'IO::Async',
    requires => {
-      'Future' => '0.26', # ->is_failed
+      'Future' => '0.33', # ->catch
       'Future::Utils' => '0.18', # try_repeat
       'Exporter' => '5.57',
       'File::stat' => 0,

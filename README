@@ -75,11 +75,11 @@ DESCRIPTION
     callbacks are used to inform when new incoming data is available, or
     when the outgoing buffer is empty.
 
-    While stream-based sockets can be handled using using
-    `IO::Async::Stream', datagram or raw sockets do not provide a
-    bytestream. For these, the IO::Async::Socket class is another subclass
-    of IO::Async::Handle which maintains an outgoing packet queue, and
-    informs of packet receipt using a callback or method.
+    While stream-based sockets can be handled using using IO::Async::Stream,
+    datagram or raw sockets do not provide a bytestream. For these, the
+    IO::Async::Socket class is another subclass of IO::Async::Handle which
+    maintains an outgoing packet queue, and informs of packet receipt using
+    a callback or method.
 
     The IO::Async::Listener class is another subclass of IO::Async::Handle
     which facilitates the use of `listen(2)'-mode sockets. When a new
@@ -144,8 +144,8 @@ DESCRIPTION
     The IO::Async::File object observes changes to `stat(2)' properties of a
     file, directory, or other filesystem object. It invokes callbacks when
     properties change. This is used by IO::Async::FileStream which presents
-    the same events as a `IO::Async::Stream' but operates on a regular file
-    on the filesystem, observing it for updates.
+    the same events as a IO::Async::Stream but operates on a regular file on
+    the filesystem, observing it for updates.
 
   Asynchronous Co-routines and Functions
     The `IO::Async' framework generally provides mechanisms for multiplexing
@@ -174,9 +174,9 @@ DESCRIPTION
   Futures
     An IO::Async::Future object represents a single outstanding action that
     is yet to complete, such as a name resolution operation or a socket
-    connection. It stands in contrast to a `IO::Async::Notifier', which is
-    an object that represents an ongoing source of activity, such as a
-    readable filehandle of bytes or a POSIX signal.
+    connection. It stands in contrast to a IO::Async::Notifier, which is an
+    object that represents an ongoing source of activity, such as a readable
+    filehandle of bytes or a POSIX signal.
 
     Futures are a recent addition to the `IO::Async' API and details are
     still subject to change and experimentation.
@@ -223,16 +223,15 @@ TODO
         anything that might be useful on Win32.
 
     *   Consider some form of persistent object wrapper in the form of an
-        `IO::Async::Object', based on `IO::Async::Routine'.
+        `IO::Async::Object', based on IO::Async::Routine.
 
     *   `IO::Async::Protocol::Datagram'
 
     *   Support for watching filesystem entries for change. Extract logic
-        from `IO::Async::File' and define a Loop watch/unwatch method pair.
+        from IO::Async::File and define a Loop watch/unwatch method pair.
 
-    *   Define more `Future'-returning methods. Consider also one-shot
-        Futures on things like `IO::Async::Process' exits, or
-        `IO::Async::Handle' close.
+    *   Define more Future-returning methods. Consider also one-shot Futures
+        on things like IO::Async::Process exits, or IO::Async::Handle close.
 
 SUPPORT
     Bugs may be reported via RT at

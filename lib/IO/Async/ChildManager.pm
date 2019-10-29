@@ -8,7 +8,7 @@ package IO::Async::ChildManager;
 use strict;
 use warnings;
 
-our $VERSION = '0.68';
+our $VERSION = '0.69';
 
 # Not a notifier
 
@@ -29,7 +29,7 @@ C<IO::Async::ChildManager> - facilitates the execution of child processes
 
 =head1 SYNOPSIS
 
-This object is used indirectly via an C<IO::Async::Loop>:
+This object is used indirectly via an L<IO::Async::Loop>:
 
  use IO::Async::Loop;
 
@@ -101,7 +101,7 @@ This object is used indirectly via an C<IO::Async::Loop>:
 
 =head1 DESCRIPTION
 
-This module extends the functionality of the containing C<IO::Async::Loop> to
+This module extends the functionality of the containing L<IO::Async::Loop> to
 manage the execution of child processes. It acts as a central point to store
 PID values of currently-running children, and to call the appropriate
 continuation handler code when the process terminates. It provides useful
@@ -182,7 +182,9 @@ object.
 
 =cut
 
-=head2 $pid = $loop->spawn_child( %params )
+=head2 spawn_child
+
+   $pid = $loop->spawn_child( %params )
 
 This method creates a new child process to run a given code block or command.
 The C<%params> hash takes the following keys:
@@ -390,7 +392,7 @@ Change the child process's groups list, to those groups whose numbers are
 given in the ARRAY reference.
 
 On most systems, only the privileged superuser change user or group IDs.
-C<IO::Async> will B<NOT> check before detaching the child process whether
+L<IO::Async> will B<NOT> check before detaching the child process whether
 this is the case.
 
 If setting both the primary GID and the supplementary groups list, it is

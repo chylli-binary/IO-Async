@@ -8,7 +8,7 @@ package IO::Async::Test;
 use strict;
 use warnings;
 
-our $VERSION = '0.68';
+our $VERSION = '0.69';
 
 use Exporter 'import';
 our @EXPORT = qw(
@@ -59,12 +59,12 @@ C<IO::Async::Test> - utility functions for use in test scripts
 =head1 DESCRIPTION
 
 This module provides utility functions that may be useful when writing test
-scripts for code which uses C<IO::Async> (as well as being used in the
-C<IO::Async> test scripts themselves).
+scripts for code which uses L<IO::Async> (as well as being used in the
+L<IO::Async> test scripts themselves).
 
 Test scripts are often synchronous by nature; they are a linear sequence of
 actions to perform, interspersed with assertions which check for given
-conditions. This goes against the very nature of C<IO::Async> which, being an
+conditions. This goes against the very nature of L<IO::Async> which, being an
 asynchronisation framework, does not provide a linear stepped way of working.
 
 In order to write a test, the C<wait_for> function provides a way of
@@ -72,7 +72,7 @@ synchronising the code, so that a given condition is known to hold, which
 would typically signify that some event has occured, the outcome of which can
 now be tested using the usual testing primitives.
 
-Because the primary purpose of C<IO::Async> is to provide IO operations on
+Because the primary purpose of L<IO::Async> is to provide IO operations on
 filehandles, a great many tests will likely be based around connected pipes or
 socket handles. The C<wait_for_stream> function provides a convenient way
 to wait for some content to be written through such a connected stream.
@@ -90,7 +90,7 @@ END { undef $loop }
 
    testing_loop( $loop )
 
-Set the C<IO::Async::Loop> object which the C<wait_for> function will loop
+Set the L<IO::Async::Loop> object which the C<wait_for> function will loop
 on.
 
 =cut

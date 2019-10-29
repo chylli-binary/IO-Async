@@ -177,6 +177,22 @@ $listensock = IO::Socket::INET->new(
    $loop->remove( $listener );
 }
 
+# stop listening
+{
+   my $listener = IO::Async::Listener->new(
+      handle => $listensock,
+      on_accept => sub {},
+   );
+
+   $loop->add( $listener );
+
+   $listener->configure( handle => undef );
+
+   is( $listener->read_handle, undef, '$listener has no read handle any more' );
+
+   $loop->remove( $listener );
+}
+
 # Subclass
 {
    my $sub_newclient;

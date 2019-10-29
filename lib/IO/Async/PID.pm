@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use base qw( IO::Async::Notifier );
 
-our $VERSION = '0.68';
+our $VERSION = '0.69';
 
 use Carp;
 
@@ -79,14 +79,14 @@ The following named parameters may be passed to C<new> or C<configure>:
 =head2 pid => INT
 
 The process ID to watch. Must be given before the object has been added to the
-containing C<IO::Async::Loop> object.
+containing L<IO::Async::Loop> object.
 
 =head2 on_exit => CODE
 
 CODE reference for the C<on_exit> event.
 
 Once the C<on_exit> continuation has been invoked, the C<IO::Async::PID>
-object is removed from the containing C<IO::Async::Loop> object.
+object is removed from the containing L<IO::Async::Loop> object.
 
 =cut
 
@@ -161,7 +161,9 @@ sub notifier_name
 
 =cut
 
-=head2 $process_id = $pid->pid
+=head2 pid
+
+   $process_id = $pid->pid
 
 Returns the underlying process ID
 
@@ -173,7 +175,9 @@ sub pid
    return $self->{pid};
 }
 
-=head2 $pid->kill( $signal )
+=head2 kill
+
+   $pid->kill( $signal )
 
 Sends a signal to the process
 

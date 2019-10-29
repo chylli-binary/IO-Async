@@ -8,7 +8,7 @@ package IO::Async::FileStream;
 use strict;
 use warnings;
 
-our $VERSION = '0.68';
+our $VERSION = '0.69';
 
 use base qw( IO::Async::Stream );
 
@@ -60,10 +60,10 @@ This subclass of L<IO::Async::Stream> allows reading the end of a regular file
 which is being appended to by some other process. It invokes the C<on_read>
 event when more data has been added to the file. 
 
-This class provides an API identical to C<IO::Async::Stream> when given a
+This class provides an API identical to L<IO::Async::Stream> when given a
 C<read_handle>; it should be treated similarly. In particular, it can be given
 an C<on_read> handler, or subclassed to provide an C<on_read> method, or even
-used as the C<transport> for an C<IO::Async::Protocol::Stream> object.
+used as the C<transport> for an L<IO::Async::Protocol::Stream> object.
 
 It will not support writing.
 
@@ -80,14 +80,14 @@ references in parameters.
 Because this is a subclass of L<IO::Async::Stream> in read-only mode, all the
 events supported by C<Stream> relating to the read handle are supported here.
 This is not a full list; see also the documentation relating to
-C<IO::Async::Stream>.
+L<IO::Async::Stream>.
 
 =head2 $ret = on_read \$buffer, $eof
 
 Invoked when more data is available in the internal receiving buffer.
 
 Note that C<$eof> only indicates that all the data currently available in the
-file has now been read; in contrast to a regular C<IO::Async::Stream>, this
+file has now been read; in contrast to a regular L<IO::Async::Stream>, this
 object will not stop watching after this condition. Instead, it will continue
 watching the file for updates.
 
@@ -130,7 +130,7 @@ sub _init
 
 The following named parameters may be passed to C<new> or C<configure>, in
 addition to the parameters relating to reading supported by
-C<IO::Async::Stream>.
+L<IO::Async::Stream>.
 
 =head2 filename => STRING
 
@@ -268,7 +268,9 @@ sub write
    carp "Cannot ->write from a ".ref($_[0]);
 }
 
-=head2 $filestream->seek( $offset, $whence )
+=head2 seek
+
+   $filestream->seek( $offset, $whence )
 
 Callable only during the C<on_initial> event. Moves the read position in the
 filehandle to the given offset. C<$whence> is interpreted as for C<sysseek>,
@@ -296,7 +298,9 @@ sub seek
    sysseek( $self->read_handle, $offset, $whence );
 }
 
-=head2 $success = $filestream->seek_to_last( $str_pattern, %opts )
+=head2 seek_to_last
+
+   $success = $filestream->seek_to_last( $str_pattern, %opts )
 
 Callable only during the C<on_initial> event. Attempts to move the read
 position in the filehandle to just after the last occurance of a given match.
@@ -391,7 +395,7 @@ sub seek_to_last
 
 =item *
 
-Move the actual file update watching code into C<IO::Async::Loop>, possibly as
+Move the actual file update watching code into L<IO::Async::Loop>, possibly as
 a new watch/unwatch method pair C<watch_file>.
 
 =item *

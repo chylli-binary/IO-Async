@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use base qw( IO::Async::Notifier );
 
-our $VERSION = '0.68';
+our $VERSION = '0.69';
 
 use Carp;
 
@@ -94,7 +94,7 @@ The following named parameters may be passed to C<new> or C<configure>:
 
 The reading and writing IO handles. Each must implement the C<fileno> method.
 Primarily used for passing C<STDIN> / C<STDOUT>; see the SYNOPSIS section of
-C<IO::Async::Stream> for an example.
+L<IO::Async::Stream> for an example.
 
 =head2 handle => IO
 
@@ -201,11 +201,16 @@ sub configure
             # passes ASCII then all will be well
             carp "Constructing a ".ref($self)." with an encoding-enabled handle may not read correctly";
          }
+
+         $self->{read_handle} = $read_handle;
+
+         $self->want_readready( defined $read_handle );
       }
+      else {
+         $self->want_readready( 0 );
 
-      $self->{read_handle} = $read_handle;
-
-      $self->want_readready( defined $read_handle );
+         undef $self->{read_handle};
+      }
 
       # In case someone has reopened the filehandles during an on_closed handler
       undef $self->{handle_closing};
@@ -223,9 +228,14 @@ sub configure
             # This used not to be fatal. Make it just a warning for now.
             carp 'A write handle was provided but neither a on_write_ready callback nor an ->on_write_ready method were. Perhaps you mean \'read_handle\' instead?';
          }
-      }
 
-      $self->{write_handle} = $write_handle;
+         $self->{write_handle} = $write_handle;
+      }
+      else {
+         $self->want_writeready( 0 );
+
+         undef $self->{write_handle};
+      }
 
       # In case someone has reopened the filehandles during an on_closed handler
       undef $self->{handle_closing};
@@ -336,7 +346,9 @@ L<Future> instances.
 
 =cut
 
-=head2 $handle->set_handles( %params )
+=head2 set_handle
+
+   $handle->set_handles( %params )
 
 Sets new reading or writing filehandles. Equivalent to calling the
 C<configure> method with the same parameters.
@@ -354,7 +366,9 @@ sub set_handles
    );
 }
 
-=head2 $handle->set_handle( $fh )
+=head2 set_handle
+
+   $handle->set_handle( $fh )
 
 Shortcut for
 
@@ -370,7 +384,9 @@ sub set_handle
    $self->configure( handle => $fh );
 }
 
-=head2 $handle->close
+=head2 close
+
+   $handle->close
 
 This method calls C<close> on the underlying IO handles. This method will then
 remove the handle from its containing loop.
@@ -408,9 +424,13 @@ sub _closed
    $self->remove_from_parent;
 }
 
-=head2 $handle->close_read
+=head2 close_read
 
-=head2 $handle->close_write
+=head2 close_write
+
+   $handle->close_read
+
+   $handle->close_write
 
 Closes the underlying read or write handle, and deconfigures it from the
 object. Neither of these methods will invoke the C<on_closed> event, nor
@@ -444,7 +464,9 @@ sub close_write
    $self->_closed if !$self->{read_handle};
 }
 
-=head2 $handle->new_close_future->get
+=head2 new_close_future
+
+   $handle->new_close_future->get
 
 Returns a new L<IO::Async::Future> object which will become done when the
 handle is closed. Cancelling the C<$future> will remove this notification
@@ -469,9 +491,13 @@ sub new_close_future
    return $future;
 }
 
-=head2 $handle = $handle->read_handle
+=head2 read_handle
 
-=head2 $handle = $handle->write_handle
+=head2 write_handle
+
+   $handle = $handle->read_handle
+
+   $handle = $handle->write_handle
 
 These accessors return the underlying IO handles.
 
@@ -489,9 +515,13 @@ sub write_handle
    return $self->{write_handle};
 }
 
-=head2 $fileno = $handle->read_fileno
+=head2 read_fileno
 
-=head2 $fileno = $handle->write_fileno
+=head2 write_fileno
+
+   $fileno = $handle->read_fileno
+
+   $fileno = $handle->write_fileno
 
 These accessors return the file descriptor numbers of the underlying IO
 handles.
@@ -512,13 +542,17 @@ sub write_fileno
    return $handle->fileno;
 }
 
-=head2 $value = $handle->want_readready
+=head2 want_readready
 
-=head2 $oldvalue = $handle->want_readready( $newvalue )
+=head2 want_writeready
 
-=head2 $value = $handle->want_writeready
+   $value = $handle->want_readready
 
-=head2 $oldvalue = $handle->want_writeready( $newvalue )
+   $oldvalue = $handle->want_readready( $newvalue )
+
+   $value = $handle->want_writeready
+
+   $oldvalue = $handle->want_writeready( $newvalue )
 
 These are the accessor for the C<want_readready> and C<want_writeready>
 properties, which define whether the object is interested in knowing about 
@@ -578,7 +612,9 @@ sub want_writeready
    }
 }
 
-=head2 $handle->socket( $ai )
+=head2 socket
+
+   $handle->socket( $ai )
 
 Convenient shortcut to creating a socket handle, as given by an addrinfo
 structure, and setting it as the read and write handle for the object.
@@ -604,12 +640,16 @@ sub socket
    $self->set_handle( $sock );
 }
 
-=head2 $handle = $handle->bind( %args )->get
+=head2 bind
+
+   $handle = $handle->bind( %args )->get
 
 Performs a C<getaddrinfo> resolver operation with the C<passive> flag set,
 and then attempts to bind a socket handle of any of the return values.
 
-=head2 $handle = $handle->bind( $ai )->get
+=head2 bind (1 argument)
+
+   $handle = $handle->bind( $ai )->get
 
 When invoked with a single argument, this method is a convenient shortcut to
 creating a socket handle and C<bind()>ing it to the address as given by an
@@ -651,7 +691,9 @@ sub bind
    });
 }
 
-=head2 $handle = $handle->connect( %args )->get
+=head2 connect
+
+   $handle = $handle->connect( %args )->get
 
 A convenient wrapper for calling the C<connect> method on the underlying
 L<IO::Async::Loop> object.

@@ -8,7 +8,7 @@ package IO::Async::Function;
 use strict;
 use warnings;
 
-our $VERSION = '0.68';
+our $VERSION = '0.69';
 
 use base qw( IO::Async::Notifier );
 use IO::Async::Timer::Countdown;
@@ -70,7 +70,7 @@ all of the result must be represented in the return values.
 The Function object is implemented using an L<IO::Async::Routine> with two
 L<IO::Async::Channel> objects to pass calls into and results out from it.
 
-The C<IO::Async> framework generally provides mechanisms for multiplexing IO
+The L<IO::Async> framework generally provides mechanisms for multiplexing IO
 tasks between different handles, so there aren't many occasions when such an
 asynchronous function is necessary. Two cases where this does become useful
 are:
@@ -86,7 +86,7 @@ When a large amount of computationally-intensive work needs to be performed
 
 When a blocking OS syscall or library-level function needs to be called, and
 no nonblocking or asynchronous version is supplied. This is used by
-C<IO::Async::Resolver>.
+L<IO::Async::Resolver>.
 
 =back
 
@@ -117,7 +117,7 @@ body itself.
 
 =head2 model => "fork" | "thread"
 
-Optional. Requests a specific C<IO::Async::Routine> model. If not supplied,
+Optional. Requests a specific L<IO::Async::Routine> model. If not supplied,
 leaves the default choice up to Routine.
 
 =head2 min_workers => INT
@@ -259,7 +259,9 @@ L<Future> instances.
 
 =cut
 
-=head2 $function->start
+=head2 start
+
+   $function->start
 
 Start the worker processes
 
@@ -272,7 +274,9 @@ sub start
    $self->_new_worker for 1 .. $self->{min_workers};
 }
 
-=head2 $function->stop
+=head2 stop
+
+   $function->stop
 
 Stop the worker processes
 
@@ -288,7 +292,9 @@ sub stop
    }
 }
 
-=head2 $function->restart
+=head2 restar
+
+   $function->restart
 
 Gracefully stop and restart all the worker processes. 
 
@@ -302,7 +308,9 @@ sub restart
    $self->start;
 }
 
-=head2 @result = $function->call( %params )->get
+=head2 call
+
+   @result = $function->call( %params )->get
 
 Schedules an invocation of the contained function to be executed on one of the
 worker processes. If a non-busy worker is available now, it will be called
@@ -335,7 +343,9 @@ as the first argument to C<fail>, in the category of C<error>.
    $f->fail( @{ $exception } )
    $f->fail( $exception, error => )
 
-=head2 $function->call( %params )
+=head2 call (void)
+
+   $function->call( %params )
 
 When not returning a future, the C<on_result>, C<on_return> and C<on_error>
 arguments give continuations to handle successful results or failure.
@@ -446,7 +456,9 @@ sub _worker_objects
    return values %{ $self->{workers} };
 }
 
-=head2 $count = $function->workers
+=head2 workers
+
+   $count = $function->workers
 
 Returns the total number of worker processes available
 
@@ -458,7 +470,9 @@ sub workers
    return scalar keys %{ $self->{workers} };
 }
 
-=head2 $count = $function->workers_busy
+=head2 workers_busy
+
+   $count = $function->workers_busy
 
 Returns the number of worker processes that are currently busy
 
@@ -470,7 +484,9 @@ sub workers_busy
    return scalar grep { $_->{busy} } $self->_worker_objects;
 }
 
-=head2 $count = $function->workers_idle
+=head2 workers_idle
+
+   $count = $function->workers_idle
 
 Returns the number of worker processes that are currently idle
 

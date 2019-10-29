@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use 5.010;
 
-our $VERSION = '0.68';
+our $VERSION = '0.69';
 
 # When editing this value don't forget to update the docs below
 use constant NEED_API_VERSION => '0.33';
@@ -116,7 +116,7 @@ C<IO::Async::Loop> - core loop of the C<IO::Async> framework
 =head1 DESCRIPTION
 
 This module provides an abstract class which implements the core loop of the
-C<IO::Async> framework. Its primary purpose is to store a set of
+L<IO::Async> framework. Its primary purpose is to store a set of
 L<IO::Async::Notifier> objects or subclasses of them. It handles all of the
 lower-level set manipulation actions, and leaves the actual IO readiness 
 testing/notification to the concrete class that implements it. It also
@@ -134,13 +134,13 @@ See also the two bundled Loop subclasses:
 =back
 
 Or other subclasses that may appear on CPAN which are not part of the core
-C<IO::Async> distribution.
+L<IO::Async> distribution.
 
 =head2 Ignoring SIGPIPE
 
 Since version I<0.66> loading this module automatically ignores C<SIGPIPE>, as
 it is highly unlikely that the default-terminate action is the best course of
-action for an C<IO::Async>-based program to take. If at load time the handler
+action for an L<IO::Async>-based program to take. If at load time the handler
 disposition is still set as C<DEFAULT>, it is set to ignore. If already
 another handler has been placed there by the program code, it will be left
 undisturbed.
@@ -196,7 +196,9 @@ sub __new
 
 =head1 MAGIC CONSTRUCTOR
 
-=head2 $loop = IO::Async::Loop->new
+=head2 new
+
+   $loop = IO::Async::Loop->new
 
 This function attempts to find a good subclass to use, then calls its
 constructor. It works by making a list of likely candidate classes, then
@@ -235,7 +237,7 @@ If this environment variable is set, it should contain a comma-separated list
 of subclass names. These names may or may not be fully-qualified; if a name
 does not contain C<::> then it will have C<IO::Async::Loop::> prepended to it.
 This allows the end-user to specify a particular choice to fit the needs of
-his use of a program using C<IO::Async>.
+his use of a program using L<IO::Async>.
 
 =item * $IO::Async::Loop::LOOP
 
@@ -258,7 +260,7 @@ The module called C<IO::Async::Loop::$^O> is tried next. This allows specific
 OSes, such as the ever-tricky C<MSWin32>, to provide an implementation that
 might be more efficient than the generic ones, or even work at all.
 
-This option is now discouraged in favour of the C<IO::Async::OS> hint instead.
+This option is now discouraged in favour of the L<IO::Async::OS> hint instead.
 At some future point it may be removed entirely, given as currently only
 C<linux> uses it.
 
@@ -360,14 +362,16 @@ sub new_builtin
 
 =head1 NOTIFIER MANAGEMENT
 
-The following methods manage the collection of C<IO::Async::Notifier> objects.
+The following methods manage the collection of L<IO::Async::Notifier> objects.
 
 =cut
 
-=head2 $loop->add( $notifier )
+=head2 add
+
+   $loop->add( $notifier )
 
 This method adds another notifier object to the stored collection. The object
-may be a C<IO::Async::Notifier>, or any subclass of it.
+may be a L<IO::Async::Notifier>, or any subclass of it.
 
 When a notifier is added, any children it has are also added, recursively. In
 this way, entire sections of a program may be written within a tree of
@@ -407,7 +411,9 @@ sub _add_noparentcheck
    return;
 }
 
-=head2 $loop->remove( $notifier )
+=head2 remove
+
+   $loop->remove( $notifier )
 
 This method removes a notifier object from the stored collection, and
 recursively and children notifiers it contains.
@@ -444,7 +450,9 @@ sub _remove_noparentcheck
    return;
 }
 
-=head2 @notifiers = $loop->notifiers
+=head2 notifiers
+
+   @notifiers = $loop->notifiers
 
 Returns a list of all the notifier objects currently stored in the Loop.
 
@@ -468,7 +476,9 @@ program.
 
 =cut
 
-=head2 $count = $loop->loop_once( $timeout )
+=head2 loop_once
+
+   $count = $loop->loop_once( $timeout )
 
 This method performs a single wait loop using the specific subclass's
 underlying mechanism. If C<$timeout> is undef, then no timeout is applied, and
@@ -487,9 +497,11 @@ sub loop_once
    croak "Expected that $self overrides ->loop_once";
 }
 
-=head2 @result = $loop->run
+=head2 run
 
-=head2 $result = $loop->run
+   @result = $loop->run
+
+   $result = $loop->run
 
 Runs the actual IO event loop. This method blocks until the C<stop> method is
 called, and returns the result that was passed to C<stop>. In scalar context
@@ -515,7 +527,9 @@ sub run
    return wantarray ? @{ $self->{result} } : $self->{result}[0];
 }
 
-=head2 $loop->stop( @result )
+=head2 stop
+
+   $loop->stop( @result )
 
 Stops the inner-most C<run> method currently in progress, causing it to return
 the given C<@result>.
@@ -533,7 +547,9 @@ sub stop
    undef $self->{running};
 }
 
-=head2 $loop->loop_forever
+=head2 loop_forever
+
+   $loop->loop_forever
 
 A synonym for C<run>, though this method does not return a result.
 
@@ -546,7 +562,9 @@ sub loop_forever
    return;
 }
 
-=head2 $loop->loop_stop
+=head2 loop_stop
+
+   $loop->loop_stop
 
 A synonym for C<stop>, though this method does not pass any results.
 
@@ -558,7 +576,9 @@ sub loop_stop
    $self->stop;
 }
 
-=head2 $loop->post_fork
+=head2 post_fork
+
+   $loop->post_fork
 
 The base implementation of this method does nothing. It is provided in case
 some Loop subclasses should take special measures after a C<fork()> system
@@ -587,9 +607,11 @@ The following methods relate to L<IO::Async::Future> objects.
 
 =cut
 
-=head2 $future = $loop->new_future
+=head2 new_future
 
-Returns a new C<IO::Async::Future> instance with a reference to the Loop.
+   $future = $loop->new_future
+
+Returns a new L<IO::Async::Future> instance with a reference to the Loop.
 
 =cut
 
@@ -600,7 +622,9 @@ sub new_future
    return IO::Async::Future->new( $self );
 }
 
-=head2 $loop->await( $future )
+=head2 await
+
+   $loop->await( $future )
 
 Blocks until the given future is ready, as indicated by its C<is_ready> method.
 As a convenience it returns the future, to simplify code:
@@ -619,7 +643,9 @@ sub await
    return $future;
 }
 
-=head2 $loop->await_all( @futures )
+=head2 await_all
+
+   $loop->await_all( @futures )
 
 Blocks until all the given futures are ready, as indicated by the C<is_ready>
 method. Equivalent to calling C<await> on a C<< Future->wait_all >> except
@@ -637,9 +663,11 @@ sub await_all
    $self->loop_once until _all_ready @futures;
 }
 
-=head2 $loop->delay_future( %args )->get
+=head2 delay_future
 
-Returns a new C<IO::Async::Future> instance which will become done at a given
+   $loop->delay_future( %args )->get
+
+Returns a new L<IO::Async::Future> instance which will become done at a given
 point in time. The C<%args> should contain an C<at> or C<after> key as per the
 C<watch_time> method. The returned future may be cancelled to cancel the
 timer. At the alloted time the future will succeed with an empty result list.
@@ -661,9 +689,11 @@ sub delay_future
    return $future;
 }
 
-=head2 $loop->timeout_future( %args )->get
+=head2 timeout_future
 
-Returns a new C<IO::Async::Future> instance which will fail at a given point
+   $loop->timeout_future( %args )->get
+
+Returns a new L<IO::Async::Future> instance which will fail at a given point
 in time. The C<%args> should contain an C<at> or C<after> key as per the
 C<watch_time> method. The returned future may be cancelled to cancel the
 timer. At the alloted time, the future will fail with the string C<"Timeout">.
@@ -693,7 +723,7 @@ sub timeout_future
 
 Most of the following methods are higher-level wrappers around base
 functionality provided by the low-level API documented below. They may be
-used by C<IO::Async::Notifier> subclasses or called directly by the program.
+used by L<IO::Async::Notifier> subclasses or called directly by the program.
 
 The following methods documented with a trailing call to C<< ->get >> return
 L<Future> instances.
@@ -717,7 +747,9 @@ sub __new_feature
    return $classname->new( loop => $self );
 }
 
-=head2 $id = $loop->attach_signal( $signal, $code )
+=head2 attach_signal
+
+   $id = $loop->attach_signal( $signal, $code )
 
 This method adds a new signal handler to watch the given signal. The same
 signal can be attached to multiple times; its callback functions will all be
@@ -744,7 +776,7 @@ Attaching to C<SIGCHLD> is not recommended because of the way all child
 processes use it to report their termination. Instead, the C<watch_child>
 method should be used to watch for termination of a given child process. A
 warning will be printed if C<SIGCHLD> is passed here, but in future versions
-of C<IO::Async> this behaviour may be disallowed altogether.
+of L<IO::Async> this behaviour may be disallowed altogether.
 
 See also L<POSIX> for the C<SIGI<name>> constants.
 
@@ -781,7 +813,9 @@ sub attach_signal
    return \$self->{sigattaches}->{$signal}->[-1];
 }
 
-=head2 $loop->detach_signal( $signal, $id )
+=head2 detach_signal
+
+   $loop->detach_signal( $signal, $id )
 
 Removes a previously-attached signal handler.
 
@@ -822,7 +856,9 @@ sub detach_signal
    }
 }
 
-=head2 $loop->later( $code )
+=head2 later
+
+   $loop->later( $code )
 
 Schedules a code reference to be invoked as soon as the current round of IO
 operations is complete.
@@ -847,7 +883,9 @@ sub later
    return $self->watch_idle( when => 'later', code => $code );
 }
 
-=head2 $loop->spawn_child( %params )
+=head2 spawn_child
+
+   $loop->spawn_child( %params )
 
 This method creates a new child process to run a given code block or command.
 For more detail, see the C<spawn_child> method on the
@@ -866,7 +904,9 @@ sub spawn_child
    $childmanager->spawn_child( %params );
 }
 
-=head2 $pid = $loop->open_child( %params )
+=head2 open_child
+
+   $pid = $loop->open_child( %params )
 
 This creates a new child process to run the given code block or command, and
 attaches filehandles to it that the parent will watch. This method is a light
@@ -927,7 +967,7 @@ of the following sets of keys:
 =item on_read => CODE
 
 The child will be given the writing end of a pipe. The reading end will be
-wrapped by an C<IO::Async::Stream> using this C<on_read> callback function.
+wrapped by an L<IO::Async::Stream> using this C<on_read> callback function.
 
 =item from => STRING
 
@@ -981,7 +1021,9 @@ sub open_child
    return $process->pid;
 }
 
-=head2 $pid = $loop->run_child( %params )
+=head2 run_child
+
+   $pid = $loop->run_child( %params )
 
 This creates a new child process to run the given code block or command,
 capturing its STDOUT and STDERR streams. When the process exits, a
@@ -1073,7 +1115,9 @@ sub run_child
    return $process->pid;
 }
 
-=head2 $loop->resolver
+=head2 resolver
+
+   $loop->resolver
 
 Returns the internally-stored L<IO::Async::Resolver> object, used for name
 resolution operations by the C<resolve>, C<connect> and C<listen> methods.
@@ -1092,7 +1136,9 @@ sub resolver
    }
 }
 
-=head2 $loop->set_resolver( $resolver )
+=head2 set_resolver
+
+   $loop->set_resolver( $resolver )
 
 Sets the internally-stored L<IO::Async::Resolver> object. In most cases this
 method should not be required, but it may be used to provide an alternative
@@ -1113,10 +1159,12 @@ sub set_resolver
    $self->add( $resolver );
 }
 
-=head2 @result = $loop->resolve( %params )->get
+=head2 resolve
+
+   @result = $loop->resolve( %params )->get
 
 This method performs a single name resolution operation. It uses an
-internally-stored C<IO::Async::Resolver> object. For more detail, see the
+internally-stored L<IO::Async::Resolver> object. For more detail, see the
 C<resolve> method on the L<IO::Async::Resolver> class.
 
 =cut
@@ -1129,7 +1177,9 @@ sub resolve
    $self->resolver->resolve( %params );
 }
 
-=head2 $handle|$socket = $loop->connect( %params )->get
+=head2 connect
+
+   $handle|$socket = $loop->connect( %params )->get
 
 This method performs a non-blocking connection to a given address or set of
 addresses, returning a L<IO::Async::Future> which represents the operation. On
@@ -1286,7 +1336,9 @@ callback may be invoked multiple times, even before an eventual success.
 This method accepts an C<extensions> parameter; see the C<EXTENSIONS> section
 below.
 
-=head2 $loop->connect( %params )
+=head2 connect (void)
+
+   $loop->connect( %params )
 
 When not returning a future, additional parameters can be given containing the
 continuations to invoke on success or failure.
@@ -1422,7 +1474,9 @@ sub connect
    $future->on_ready( sub { undef $future } ); # intentional cycle
 }
 
-=head2 $listener = $loop->listen( %params )->get
+=head2 listen
+
+   $listener = $loop->listen( %params )->get
 
 This method sets up a listening socket and arranges for an acceptor callback
 to be invoked each time a new connection is accepted on the socket. Internally
@@ -1542,12 +1596,14 @@ this option to be disabled.
 =back
 
 An alternative which gives more control over the listener, is to create the
-C<IO::Async::Listener> object directly and add it explicitly to the Loop.
+L<IO::Async::Listener> object directly and add it explicitly to the Loop.
 
 This method accepts an C<extensions> parameter; see the C<EXTENSIONS> section
 below.
 
-=head2 $loop->listen( %params )
+=head2 listen (void)
+
+   $loop->listen( %params )
 
 When not returning a future, additional parameters can be given containing the
 continuations to invoke on success or failure.
@@ -1799,7 +1855,9 @@ to give different implementations on that OS.
 
 =cut
 
-=head2 $signum = $loop->signame2num( $signame )
+=head2 signame2num
+
+   $signum = $loop->signame2num( $signame )
 
 Legacy wrappers around L<IO::Async::OS> functions.
 
@@ -1807,11 +1865,13 @@ Legacy wrappers around L<IO::Async::OS> functions.
 
 sub signame2num { shift; IO::Async::OS->signame2num( @_ ) }
 
-=head2 $time = $loop->time
+=head2 time
+
+   $time = $loop->time
 
 Returns the current UNIX time in fractional seconds. This is currently
 equivalent to C<Time::HiRes::time> but provided here as a utility for
-programs to obtain the time current used by C<IO::Async> for its own timing
+programs to obtain the time current used by L<IO::Async> for its own timing
 purposes.
 
 =cut
@@ -1822,7 +1882,9 @@ sub time
    return Time::HiRes::time;
 }
 
-=head2 $pid = $loop->fork( %params )
+=head2 fork
+
+   $pid = $loop->fork( %params )
 
 This method creates a new child process to run a given code block, returning
 its process ID.
@@ -1892,7 +1954,9 @@ sub fork
    return $kid;
 }
 
-=head2 $tid = $loop->create_thread( %params )
+=head2 create_thread
+
+   $tid = $loop->create_thread( %params )
 
 This method creates a new (non-detached) thread to run the given code block,
 returning its thread ID.
@@ -2013,7 +2077,9 @@ to implement a C<IO::Async::Loop> subclass.
 
 =cut
 
-=head2 IO::Async::Loop->API_VERSION
+=head2 API_VERSION
+
+   IO::Async::Loop->API_VERSION
 
 This method will be called by the magic constructor on the class before it is
 constructed, to ensure that the specific implementation will support the
@@ -2029,7 +2095,9 @@ This method may be implemented using C<constant>; e.g
 
 =cut
 
-=head2 $loop->watch_io( %params )
+=head2 watch_io
+
+   $loop->watch_io( %params )
 
 This method installs callback functions which will be invoked when the given
 IO handle becomes read- or write-ready.
@@ -2057,7 +2125,7 @@ time. For any one filehandle, there can only be one read-readiness and/or one
 write-readiness callback at any one time. Registering a new one will remove an
 existing one of that type. It is not required that both are provided.
 
-Applications should use a C<IO::Async::Handle> or C<IO::Async::Stream> instead
+Applications should use a L<IO::Async::Handle> or L<IO::Async::Stream> instead
 of using this method.
 
 If the filehandle does not yet have the C<O_NONBLOCK> flag set, it will be
@@ -2099,7 +2167,9 @@ sub __watch_io
    keys %params and croak "Unrecognised keys for ->watch_io - " . join( ", ", keys %params );
 }
 
-=head2 $loop->unwatch_io( %params )
+=head2 unwatch_io
+
+   $loop->unwatch_io( %params )
 
 This method removes a watch on an IO handle which was previously installed by
 C<watch_io>.
@@ -2158,7 +2228,9 @@ sub __unwatch_io
    keys %params and croak "Unrecognised keys for ->unwatch_io - " . join( ", ", keys %params );
 }
 
-=head2 $loop->watch_signal( $signal, $code )
+=head2 watch_signal
+
+   $loop->watch_signal( $signal, $code )
 
 This method adds a new signal handler to watch the given signal.
 
@@ -2177,7 +2249,7 @@ A CODE reference to the handling callback.
 There can only be one callback per signal name. Registering a new one will
 remove an existing one.
 
-Applications should use a C<IO::Async::Signal> object, or call
+Applications should use a L<IO::Async::Signal> object, or call
 C<attach_signal> instead of using this method.
 
 This and C<unwatch_signal> are optional; a subclass may implement neither, or
@@ -2196,7 +2268,9 @@ sub watch_signal
    IO::Async::OS->loop_watch_signal( $self, $signal, $code );
 }
 
-=head2 $loop->unwatch_signal( $signal )
+=head2 unwatch_signal
+
+   $loop->unwatch_signal( $signal )
 
 This method removes the signal callback for the given signal.
 
@@ -2220,7 +2294,9 @@ sub unwatch_signal
    IO::Async::OS->loop_unwatch_signal( $self, $signal );
 }
 
-=head2 $id = $loop->watch_time( %args )
+=head2 watch_time
+
+   $id = $loop->watch_time( %args )
 
 This method installs a callback which will be called at the specified time.
 The time may either be specified as an absolute value (the C<at> key), or
@@ -2258,7 +2334,7 @@ CODE reference to the continuation to run at the allotted time.
 
 Either one of C<at> or C<after> is required.
 
-For more powerful timer functionality as a C<IO::Async::Notifier> (so it can
+For more powerful timer functionality as a L<IO::Async::Notifier> (so it can
 be used as a child within another Notifier), see instead the
 L<IO::Async::Timer> object and its subclasses.
 
@@ -2303,7 +2379,9 @@ sub watch_time
    }
 }
 
-=head2 $loop->unwatch_time( $id )
+=head2 unwatch_time
+
+   $loop->unwatch_time( $id )
 
 Removes a timer callback previously created by C<watch_time>.
 
@@ -2349,7 +2427,9 @@ sub _build_time
    return $time;
 }
 
-=head2 $id = $loop->enqueue_timer( %params )
+=head2 enqueue_timer
+
+   $id = $loop->enqueue_timer( %params )
 
 An older version of C<watch_time>. This method should not be used in new code
 but is retained for legacy purposes. For simple watch/unwatch behaviour use
@@ -2372,7 +2452,9 @@ sub enqueue_timer
    return [ $self->watch_time( %params ), $code ];
 }
 
-=head2 $loop->cancel_timer( $id )
+=head2 cancel_timer
+
+   $loop->cancel_timer( $id )
 
 An older version of C<unwatch_time>. This method should not be used in new
 code but is retained for legacy purposes.
@@ -2386,7 +2468,9 @@ sub cancel_timer
    $self->unwatch_time( $id->[0] );
 }
 
-=head2 $newid = $loop->requeue_timer( $id, %params )
+=head2 requeue_timer
+
+   $newid = $loop->requeue_timer( $id, %params )
 
 Reschedule an existing timer, moving it to a new time. The old timer is
 removed and will not be invoked.
@@ -2413,7 +2497,9 @@ sub requeue_timer
    return $self->enqueue_timer( %params, code => $id->[1] );
 }
 
-=head2 $id = $loop->watch_idle( %params )
+=head2 watch_idle
+
+   $id = $loop->watch_idle( %params )
 
 This method installs a callback which will be called at some point in the near
 future.
@@ -2482,7 +2568,9 @@ sub watch_idle
    return \$deferrals->[-1];
 }
 
-=head2 $loop->unwatch_idle( $id )
+=head2 unwatch_idle
+
+   $loop->unwatch_idle( $id )
 
 Cancels a previously-installed idle handler.
 
@@ -2524,7 +2612,9 @@ sub _reap_children
    }
 }
 
-=head2 $loop->watch_child( $pid, $code )
+=head2 watch_child
+
+   $loop->watch_child( $pid, $code )
 
 This method adds a new handler for the termination of the given child process
 PID, or all child processes.
@@ -2585,7 +2675,9 @@ sub watch_child
    $childwatches->{$pid} = $code;
 }
 
-=head2 $loop->unwatch_child( $pid )
+=head2 unwatch_child
+
+   $loop->unwatch_child( $pid )
 
 This method removes a watch on an existing child process PID.
 
@@ -2613,7 +2705,9 @@ cases of each will be documented in the above section.
 
 =cut
 
-=head2 $loop->_adjust_timeout( \$timeout )
+=head2 _adjust_timeout
+
+   $loop->_adjust_timeout( \$timeout )
 
 Shortens the timeout value passed in the scalar reference if it is longer in
 seconds than the time until the next queued event on the timer queue. If there
@@ -2652,7 +2746,9 @@ sub _adjust_timeout
    }
 }
 
-=head2 $loop->_manage_queues
+=head2 _manage_queues
+
+   $loop->_manage_queues
 
 Checks the timer queue for callbacks that should have been invoked by now, and
 runs them all, removing them from the queue. It also invokes all of the
@@ -2733,7 +2829,7 @@ use the C<acceptor> parameter on the C<listener> object.
 
 =head1 STALL WATCHDOG
 
-A well-behaved C<IO::Async> program should spend almost all of its time
+A well-behaved L<IO::Async> program should spend almost all of its time
 blocked on input using the underlying C<IO::Async::Loop> instance. The stall
 watchdog is an optional debugging feature to help detect CPU spinlocks and
 other bugs, where control is not returned to the loop every so often.

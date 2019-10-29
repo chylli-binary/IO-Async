@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use base qw( IO::Async::Notifier );
 
-our $VERSION = '0.68';
+our $VERSION = '0.69';
 
 use Carp;
 
@@ -113,7 +113,9 @@ used to distinguish the two cases:
 
 =cut
 
-=head2 $process = IO::Async::Process->new( %args )
+=head2 new
+
+   $process = IO::Async::Process->new( %args )
 
 Constructs a new C<IO::Async::Process> object and returns it.
 
@@ -142,7 +144,7 @@ The following named parameters may be passed to C<new> or C<configure>:
 CODE reference for the event handlers.
 
 Once the C<on_finish> continuation has been invoked, the C<IO::Async::Process>
-object is removed from the containing C<IO::Async::Loop> object.
+object is removed from the containing L<IO::Async::Loop> object.
 
 The following parameters may be passed to C<new>, or to C<configure> before
 the process has been started (i.e. before it has been added to the C<Loop>).
@@ -203,20 +205,20 @@ called C<family>; defaulting to C<unix>. The socktype of this socket may be
 given by the extra key called C<socktype>; defaulting to C<stream>. If the
 type is not C<SOCK_STREAM> then a L<IO::Async::Socket> object will be
 constructed for the parent side of the handle, rather than
-C<IO::Async::Stream>.
+L<IO::Async::Stream>.
 
 =back
 
 Once the filehandle is set up, the C<fd> method (or its shortcuts of C<stdin>,
 C<stdout> or C<stderr>) may be used to access the
-C<IO::Async::Handle>-subclassed object wrapped around it.
+L<IO::Async::Handle>-subclassed object wrapped around it.
 
 The value of this argument is implied by any of the following alternatives.
 
 =item on_read => CODE
 
 The child will be given the writing end of a pipe. The reading end will be
-wrapped by an C<IO::Async::Stream> using this C<on_read> callback function.
+wrapped by an L<IO::Async::Stream> using this C<on_read> callback function.
 
 =item into => SCALAR
 
@@ -548,7 +550,9 @@ sub notifier_name
 
 =cut
 
-=head2 $pid = $process->pid
+=head2 pid
+
+   $pid = $process->pid
 
 Returns the process ID of the process, if it has been started, or C<undef> if
 not. Its value is preserved after the process exits, so it may be inspected
@@ -562,7 +566,9 @@ sub pid
    return $self->{pid};
 }
 
-=head2 $process->kill( $signal )
+=head2 kill
+
+   $process->kill( $signal )
 
 Sends a signal to the process
 
@@ -576,7 +582,9 @@ sub kill
    kill $signal, $self->pid or croak "Cannot kill() - $!";
 }
 
-=head2 $running = $process->is_running
+=head2 is_running
+
+   $running = $process->is_running
 
 Returns true if the Process has been started, and has not yet finished.
 
@@ -588,7 +596,9 @@ sub is_running
    return $self->{running};
 }
 
-=head2 $exited = $process->is_exited
+=head2 is_exited
+
+   $exited = $process->is_exited
 
 Returns true if the Process has finished running, and finished due to normal
 C<exit(2)>.
@@ -601,7 +611,9 @@ sub is_exited
    return defined $self->{exitcode} ? ( $self->{exitcode} & 0x7f ) == 0 : undef;
 }
 
-=head2 $status = $process->exitstatus
+=head2 exitstatus
+
+   $status = $process->exitstatus
 
 If the process exited due to normal C<exit(2)>, returns the value that was
 passed to C<exit(2)>. Otherwise, returns C<undef>.
@@ -614,7 +626,9 @@ sub exitstatus
    return defined $self->{exitcode} ? ( $self->{exitcode} >> 8 ) : undef;
 }
 
-=head2 $exception = $process->exception
+=head2 exception
+
+   $exception = $process->exception
 
 If the process exited due to an exception, returns the exception that was
 thrown. Otherwise, returns C<undef>.
@@ -627,7 +641,9 @@ sub exception
    return $self->{dollarat};
 }
 
-=head2 $errno = $process->errno
+=head2 errno
+
+   $errno = $process->errno
 
 If the process exited due to an exception, returns the numerical value of
 C<$!> at the time the exception was thrown. Otherwise, returns C<undef>.
@@ -640,7 +656,9 @@ sub errno
    return $self->{dollarbang}+0;
 }
 
-=head2 $errstr = $process->errstr
+=head2 errstr
+
+   $errstr = $process->errstr
 
 If the process exited due to an exception, returns the string value of
 C<$!> at the time the exception was thrown. Otherwise, returns C<undef>.
@@ -653,7 +671,9 @@ sub errstr
    return $self->{dollarbang}."";
 }
 
-=head2 $stream = $process->fd( $fd )
+=head2 fd
+
+   $stream = $process->fd( $fd )
 
 Returns the L<IO::Async::Stream> or L<IO::Async::Socket> associated with the
 given FD number. This must have been set up by a C<configure> argument prior
@@ -710,13 +730,21 @@ sub fd
    };
 }
 
-=head2 $stream = $process->stdin
+=head2 stdin
 
-=head2 $stream = $process->stdout
+=head2 stdout
 
-=head2 $stream = $process->stderr
+=head2 stderr
 
-=head2 $stream = $process->stdio
+=head2 stdio
+
+   $stream = $process->stdin
+
+   $stream = $process->stdout
+
+   $stream = $process->stderr
+
+   $stream = $process->stdio
 
 Shortcuts for calling C<fd> with 0, 1, 2 or C<io> respectively, to obtain the
 L<IO::Async::Stream> representing the standard input, output, error, or

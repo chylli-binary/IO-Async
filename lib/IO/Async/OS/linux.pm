@@ -8,13 +8,13 @@ package IO::Async::OS::linux;
 use strict;
 use warnings;
 
-our $VERSION = '0.68';
+our $VERSION = '0.69';
 
 our @ISA = qw( IO::Async::OS::_Base );
 
 =head1 NAME
 
-C<IO::Async::OS::linux> - operating system abstractions on C<Linux> for C<IO::Async>
+C<IO::Async::OS::linux> - operating system abstractions on C<Linux> for L<IO::Async>
 
 =head1 DESCRIPTION
 

@@ -9,14 +9,14 @@ package # hide from CPAN
 use strict;
 use warnings;
 
-our $VERSION = '0.68';
+our $VERSION = '0.69';
 
 use Scalar::Util qw( weaken );
 
 use POSIX qw( EINPROGRESS );
 use Socket qw( SOL_SOCKET SO_ERROR );
 
-use Future;
+use Future 0.21;
 use Future::Utils 0.18 qw( try_repeat_until_success );
 
 use IO::Async::OS;
@@ -141,15 +141,18 @@ sub _connect_addresses
       return $f;
    } foreach => $addrlist;
 
-   return $future->else( sub {
+   return $future->else_with_f( sub {
+      my $f = shift;
+
       return $future->new->fail( "connect: $connecterr", connect => connect => $connecterr )
          if $connecterr;
       return $future->new->fail( "bind: $binderr",       connect => bind    => $binderr    )
          if $binderr;
       return $future->new->fail( "socket: $socketerr",   connect => socket  => $socketerr  )
          if $socketerr;
+
       # If it gets this far then something went wrong
-      die 'Oops; $loop->connect failed but no error cause was found';
+      return $f;
    } );
 }
 

@@ -8,7 +8,7 @@ package IO::Async::Loop::Select;
 use strict;
 use warnings;
 
-our $VERSION = '0.68';
+our $VERSION = '0.69';
 use constant API_VERSION => '0.49';
 
 use base qw( IO::Async::Loop );
@@ -29,7 +29,7 @@ use constant WATCHDOG_ENABLE => IO::Async::Loop->WATCHDOG_ENABLE;
 
 =head1 NAME
 
-C<IO::Async::Loop::Select> - use C<IO::Async> with C<select(2)>
+C<IO::Async::Loop::Select> - use L<IO::Async> with C<select(2)>
 
 =head1 SYNOPSIS
 
@@ -56,7 +56,7 @@ program already using a C<select> call.
 
 =head1 DESCRIPTION
 
-This subclass of C<IO::Async::Loop> uses the C<select(2)> syscall to perform
+This subclass of L<IO::Async::Loop> uses the C<select(2)> syscall to perform
 read-ready and write-ready tests.
 
 To integrate with an existing C<select>-based event loop, a pair of methods
@@ -71,7 +71,9 @@ by the C<post_select> method to pick which event callbacks to invoke.
 
 =cut
 
-=head2 $loop = IO::Async::Loop::Select->new
+=head2 new
+
+   $loop = IO::Async::Loop::Select->new
 
 This function returns a new instance of a C<IO::Async::Loop::Select> object.
 It takes no special arguments.
@@ -97,7 +99,9 @@ sub new
 
 =cut
 
-=head2 $loop->pre_select( \$readvec, \$writevec, \$exceptvec, \$timeout )
+=head2 pre_select
+
+   $loop->pre_select( \$readvec, \$writevec, \$exceptvec, \$timeout )
 
 This method prepares the bitvectors for a C<select> call, setting the bits
 that the Loop is interested in. It will also adjust the C<$timeout> value if
@@ -146,7 +150,9 @@ sub pre_select
    return;
 }
 
-=head2 $loop->post_select( $readvec, $writevec, $exceptvec )
+=head2 post_select
+
+   $loop->post_select( $readvec, $writevec, $exceptvec )
 
 This method checks the returned bitvectors from a C<select> call, and calls
 any of the callbacks that are appropriate.
@@ -201,7 +207,9 @@ sub post_select
    alarm( 0 ) if WATCHDOG_ENABLE;
 }
 
-=head2 $count = $loop->loop_once( $timeout )
+=head2 loop_once
+
+   $count = $loop->loop_once( $timeout )
 
 This method calls the C<pre_select> method to prepare the bitvectors for a
 C<select> syscall, performs it, then calls C<post_select> to process the

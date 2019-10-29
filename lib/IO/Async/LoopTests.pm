@@ -27,7 +27,7 @@ use POSIX qw( SIGTERM );
 use Socket qw( sockaddr_family AF_UNIX );
 use Time::HiRes qw( time );
 
-our $VERSION = '0.68';
+our $VERSION = '0.69';
 
 # Abstract Units of Time
 use constant AUT => $ENV{TEST_QUICK_TIMERS} ? 0.1 : 1;
@@ -39,7 +39,7 @@ END { undef $loop }
 
 =head1 NAME
 
-C<IO::Async::LoopTests> - acceptance testing for C<IO::Async::Loop> subclasses
+C<IO::Async::LoopTests> - acceptance testing for L<IO::Async::Loop> subclasses
 
 =head1 SYNOPSIS
 
@@ -51,7 +51,7 @@ C<IO::Async::LoopTests> - acceptance testing for C<IO::Async::Loop> subclasses
 This module contains a collection of test functions for running acceptance
 tests on L<IO::Async::Loop> subclasses. It is provided as a facility for
 authors of such subclasses to ensure that the code conforms to the Loop API
-required by C<IO::Async>.
+required by L<IO::Async>.
 
 =head1 TIMING
 
@@ -72,7 +72,9 @@ system load while testing.
 
 =cut
 
-=head2 run_tests( $class, @tests )
+=head2 run_tests
+
+   run_tests( $class, @tests )
 
 Runs a test or collection of tests against the loop subclass given. The class
 being tested is loaded by this function; the containing script does not need

@@ -9,10 +9,12 @@ use strict;
 use warnings;
 use base qw( IO::Async::Handle );
 
-our $VERSION = '0.68';
+our $VERSION = '0.69';
 
 use IO::Async::Handle;
 use IO::Async::OS;
+
+use Future 0.33; # ->catch
 
 use Errno qw( EAGAIN EWOULDBLOCK );
 
@@ -57,7 +59,7 @@ C<IO::Async::Listener> - listen on network sockets for incoming connections
 
  $loop->run;
 
-This object can also be used indirectly via an C<IO::Async::Loop>:
+This object can also be used indirectly via an L<IO::Async::Loop>:
 
  use IO::Async::Stream;
 
@@ -150,7 +152,7 @@ The IO handle containing an existing listen-mode socket.
 Optional. If defined, gives a CODE reference to be invoked every time a new
 client socket is accepted from the listening socket. It is passed the listener
 object itself, and is expected to return a new instance of
-C<IO::Async::Handle> or a subclass, used to wrap the new client socket.
+L<IO::Async::Handle> or a subclass, used to wrap the new client socket.
 
  $handle = $handle_constructor->( $listener )
 
@@ -180,7 +182,7 @@ implement the actual accept behaviour. This will be invoked as:
  ( $handle ) = $listener->acceptor( $socket, handle => $handle )->get
 
 It is invoked with the listening socket as its its argument, and optionally
-an C<IO::Async::Handle> instance as a named parameter, and is expected to
+an L<IO::Async::Handle> instance as a named parameter, and is expected to
 return a C<Future> that will eventually yield the newly-accepted socket or
 handle instance, if such was provided.
 
@@ -211,7 +213,7 @@ sub configure
 
    croak "Cannot set 'on_read_ready' on a Listener" if exists $params{on_read_ready};
 
-   if( exists $params{handle} ) {
+   if( defined $params{handle} ) {
       my $handle = delete $params{handle};
       # Sanity check it - it may be a bare GLOB ref, not an IO::Socket-derived handle
       defined getsockname( $handle ) or croak "IO handle $handle does not have a sockname";
@@ -226,6 +228,11 @@ sub configure
       bless $handle, "IO::Socket" if ref( $handle ) eq "GLOB";
 
       $self->SUPER::configure( read_handle => $handle );
+   }
+   elsif( exists $params{handle} ) {
+      delete $params{handle};
+
+      $self->SUPER::configure( read_handle => undef );
    }
 
    unless( grep $self->can_event( $_ ), @acceptor_events ) {
@@ -288,18 +295,16 @@ sub on_read_ready
    my $f = $self->$acceptor( $socket, %acceptor_params )->on_done( sub {
       my ( $result ) = @_ or return; # false-alarm
       $on_done->( $self, $result );
-   })->on_fail( sub {
+   })->catch( accept => sub {
       my ( $message, $name, @args ) = @_;
-      if( $name eq "accept" ) {
-         my ( $socket, $dollarbang ) = @args;
-         $self->maybe_invoke_event( on_accept_error => $socket, $dollarbang ) or
-            $self->invoke_error( "accept() failed - $dollarbang", accept => $socket, $dollarbang );
-      }
+      my ( $socket, $dollarbang ) = @args;
+      $self->maybe_invoke_event( on_accept_error => $socket, $dollarbang ) or
+         $self->invoke_error( "accept() failed - $dollarbang", accept => $socket, $dollarbang );
    });
 
-   # Caller is not going to keep hold of the Future, so we have to ensure it
-   # stays alive somehow
-   $self->adopt_future( $f->else( sub { Future->done } ) );
+   # TODO: Consider if this wants a more fine-grained place to report
+   # non-accept() failures (such as SSL) to
+   $self->adopt_future( $f );
 }
 
 sub _accept
@@ -334,7 +339,9 @@ L<Future> instances.
 
 =cut
 
-=head2 $acceptor = $listener->acceptor
+=head2 acceptor
+
+   $acceptor = $listener->acceptor
 
 Returns the currently-set C<acceptor> method name or code reference. This may
 be of interest to Loop C<listen> extension methods that wish to extend or wrap
@@ -355,7 +362,9 @@ sub is_listening
    return ( defined $self->sockname );
 }
 
-=head2 $name = $listener->sockname
+=head2 sockname
+
+   $name = $listener->sockname
 
 Returns the C<sockname> of the underlying listening socket
 
@@ -369,7 +378,9 @@ sub sockname
    return $handle->sockname;
 }
 
-=head2 $family = $listener->family
+=head2 family
+
+   $family = $listener->family
 
 Returns the socket address family of the underlying listening socket
 
@@ -383,7 +394,9 @@ sub family
    return sockaddr_family( $sockname );
 }
 
-=head2 $socktype = $listener->socktype
+=head2 socktype
+
+   $socktype = $listener->socktype
 
 Returns the socket type of the underlying listening socket
 
@@ -397,7 +410,9 @@ sub socktype
    return $handle->sockopt(SO_TYPE);
 }
 
-=head2 $listener->listen( %params )
+=head2 listen
+
+   $listener->listen( %params )
 
 This method sets up a listening socket and arranges for the acceptor callback
 to be invoked each time a new connection is accepted on the socket.

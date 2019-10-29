@@ -8,7 +8,7 @@ package IO::Async::Notifier;
 use strict;
 use warnings;
 
-our $VERSION = '0.68';
+our $VERSION = '0.69';
 
 use Carp;
 use Scalar::Util qw( weaken );
@@ -22,7 +22,7 @@ use constant HAS_BROKEN_TRAMPOLINES => ( $] == "5.008004" );
 
 =head1 NAME
 
-C<IO::Async::Notifier> - base class for C<IO::Async> event objects
+C<IO::Async::Notifier> - base class for L<IO::Async> event objects
 
 =head1 SYNOPSIS
 
@@ -70,8 +70,8 @@ Usually not directly used by a program, but one valid use case may be:
 =head1 DESCRIPTION
 
 This object class forms the basis for all the other event objects that an
-C<IO::Async> program uses. It provides the lowest level of integration with a
-C<IO::Async::Loop> container, and a facility to collect Notifiers together, in
+L<IO::Async> program uses. It provides the lowest level of integration with a
+L<IO::Async::Loop> container, and a facility to collect Notifiers together, in
 a tree structure, where any Notifier can contain a collection of children.
 
 Normally, objects in this class would not be directly used by an end program,
@@ -136,7 +136,7 @@ The methods in this class all use only keys in the hash prefixed by
 C<"IO_Async_Notifier__"> for namespace purposes.
 
 This is intended mainly for defining a subclass of some other object that is
-also an C<IO::Async::Notifier>, suitable to be added to an C<IO::Async::Loop>.
+also an C<IO::Async::Notifier>, suitable to be added to an L<IO::Async::Loop>.
 
  package SomeEventSource::Async;
  use base qw( SomeEventSource IO::Async::Notifier );
@@ -204,13 +204,15 @@ returned by the C<notifier_name> method.
 
 =cut
 
-=head2 $notifier = IO::Async::Notifier->new( %params )
+=head2 new
+
+   $notifier = IO::Async::Notifier->new( %params )
 
 This function returns a new instance of a C<IO::Async::Notifier> object with
 the given initial values of the named parameters.
 
-Up until C<IO::Async> version 0.19, this module used to implement the IO
-handle features now found in the C<IO::Async::Handle> subclass. Code that
+Up until L<IO::Async> version 0.19, this module used to implement the IO
+handle features now found in the L<IO::Async::Handle> subclass. Code that
 needs to use any of C<handle>, C<read_handle>, C<write_handle>,
 C<on_read_ready> or C<on_write_ready> should use L<IO::Async::Handle> instead.
 
@@ -234,7 +236,9 @@ sub new
 
 =cut
 
-=head2 $notifier->configure( %params )
+=head2 configure
+
+   $notifier->configure( %params )
 
 Adjust the named parameters of the C<Notifier> as given by the C<%params>
 hash.
@@ -263,9 +267,11 @@ sub configure_unknown
    croak "Unrecognised configuration keys for $class - " . join( " ", keys %params );
 }
 
-=head2 $loop = $notifier->loop
+=head2 loop
 
-Returns the C<IO::Async::Loop> that this Notifier is a member of.
+   $loop = $notifier->loop
+
+Returns the L<IO::Async::Loop> that this Notifier is a member of.
 
 =cut
 
@@ -295,7 +301,9 @@ sub __set_loop
    $self->_add_to_loop( $self->loop ) if $self->loop;
 }
 
-=head2 $name = $notifier->notifier_name
+=head2 notifier_name
+
+   $name = $notifier->notifier_name
 
 Returns the name to identify this Notifier. If a has not been set, it will
 return the empty string. Subclasses may wish to override this behaviour to
@@ -309,7 +317,9 @@ sub notifier_name
    return $self->{IO_Async_Notifier__notifier_name} || "";
 }
 
-=head2 $f = $notifier->adopt_future( $f )
+=head2 adopt_future
+
+   $f = $notifier->adopt_future( $f )
 
 Stores a reference to the L<Future> instance within the notifier itself, so
 the reference doesn't get lost. This reference will be dropped when the future
@@ -355,11 +365,13 @@ During the execution of a program, it may be the case that certain IO handles
 cause other handles to be created; for example, new sockets that have been
 C<accept()>ed from a listening socket. To facilitate these, a notifier may
 contain child notifier objects, that are automatically added to or removed
-from the C<IO::Async::Loop> that manages their parent.
+from the L<IO::Async::Loop> that manages their parent.
 
 =cut
 
-=head2 $parent = $notifier->parent
+=head2 parent
+
+   $parent = $notifier->parent
 
 Returns the parent of the notifier, or C<undef> if does not have one.
 
@@ -371,7 +383,9 @@ sub parent
    return $self->{IO_Async_Notifier__parent};
 }
 
-=head2 @children = $notifier->children
+=head2 children
+
+   @children = $notifier->children
 
 Returns a list of the child notifiers contained within this one.
 
@@ -384,7 +398,9 @@ sub children
    return @{ $self->{IO_Async_Notifier__children} };
 }
 
-=head2 $notifier->add_child( $child )
+=head2 add_child
+
+   $notifier->add_child( $child )
 
 Adds a child notifier. This notifier will be added to the containing loop, if
 the parent has one. Only a notifier that does not currently have a parent and
@@ -414,7 +430,9 @@ sub add_child
    return;
 }
 
-=head2 $notifier->remove_child( $child )
+=head2 remove_child
+
+   $notifier->remove_child( $child )
 
 Removes a child notifier. The child will be removed from the containing loop,
 if the parent has one. If the child itself has grandchildren, these will be
@@ -445,7 +463,9 @@ sub remove_child
    }
 }
 
-=head2 $notifier->remove_from_parent
+=head2 remove_from_parent
+
+   $notifier->remove_from_parent
 
 Removes this notifier object from its parent (either another notifier object
 or the containing loop) if it has one. If the notifier is not a child of
@@ -476,7 +496,9 @@ at some point within the code.
 
 =cut
 
-=head2 $notifier->_init( $paramsref )
+=head2 _init
+
+   $notifier->_init( $paramsref )
 
 This method is called by the constructor just before calling C<configure>.
 It is passed a reference to the HASH storing the constructor arguments.
@@ -492,7 +514,9 @@ sub _init
    # empty default
 }
 
-=head2 $notifier->configure( %params )
+=head2 configure
+
+   $notifier->configure( %params )
 
 This method is called by the constructor to set the initial values of named
 parameters, and by users of the object to adjust the values once constructed.
@@ -504,7 +528,9 @@ keys remaining.
 
 =cut
 
-=head2 $notifier->configure_unknown( %params )
+=head2 configure_unknown
+
+   $notifier->configure_unknown( %params )
 
 This method is called by the base class C<configure> method, for any remaining
 parameters that are not recognised. The default implementation throws an
@@ -515,7 +541,9 @@ other purpose.
 
 =cut
 
-=head2 $notifier->_add_to_loop( $loop )
+=head2 _add_to_loop
+
+   $notifier->_add_to_loop( $loop )
 
 This method is called when the Notifier has been added to a Loop; either
 directly, or indirectly through being a child of a Notifer already in a loop.
@@ -530,7 +558,9 @@ sub _add_to_loop
    # empty default
 }
 
-=head2 $notifier->_remove_from_loop( $loop )
+=head2 _remove_from_loop
+
+   $notifier->_remove_from_loop( $loop )
 
 This method is called when the Notifier has been removed from a Loop; either
 directly, or indirectly through being a child of a Notifier removed from the
@@ -550,7 +580,9 @@ sub _remove_from_loop
 
 =cut
 
-=head2 $mref = $notifier->_capture_weakself( $code )
+=head2 _capture_weakself
+
+   $mref = $notifier->_capture_weakself( $code )
 
 Returns a new CODE ref which, when invoked, will invoke the originally-passed
 ref, with additionally a reference to the Notifier as its first argument. The
@@ -623,7 +655,9 @@ sub _capture_weakself
    };
 }
 
-=head2 $mref = $notifier->_replace_weakself( $code )
+=head2 _replace_weakself
+
+   $mref = $notifier->_replace_weakself( $code )
 
 Returns a new CODE ref which, when invoked, will invoke the originally-passed
 ref, with a reference to the Notifier replacing its first argument. The
@@ -681,7 +715,9 @@ sub _replace_weakself
    };
 }
 
-=head2 $code = $notifier->can_event( $event_name )
+=head2 can_event
+
+   $code = $notifier->can_event( $event_name )
 
 Returns a C<CODE> reference if the object can perform the given event name,
 either by a configured C<CODE> reference parameter, or by implementing a
@@ -697,7 +733,9 @@ sub can_event
    return $self->{$event_name} || $self->can( $event_name );
 }
 
-=head2 $callback = $notifier->make_event_cb( $event_name )
+=head2 make_event_cb
+
+   $callback = $notifier->make_event_cb( $event_name )
 
 Returns a C<CODE> reference which, when invoked, will execute the given event
 handler. Event handlers may either be subclass methods, or parameters given to
@@ -730,7 +768,9 @@ sub make_event_cb
    );
 }
 
-=head2 $callback = $notifier->maybe_make_event_cb( $event_name )
+=head2 maybe_make_event_cb
+
+   $callback = $notifier->maybe_make_event_cb( $event_name )
 
 Similar to C<make_event_cb> but will return C<undef> if the object cannot
 handle the named event, rather than throwing an exception.
@@ -756,7 +796,9 @@ sub maybe_make_event_cb
    );
 }
 
-=head2 @ret = $notifier->invoke_event( $event_name, @args )
+=head2 invoke_event
+
+   @ret = $notifier->invoke_event( $event_name, @args )
 
 Invokes the given event handler, passing in the given arguments. Event
 handlers may either be subclass methods, or parameters given to the C<new> or
@@ -777,7 +819,9 @@ sub invoke_event
    return $code->( $self, @args );
 }
 
-=head2 $retref = $notifier->maybe_invoke_event( $event_name, @args )
+=head2 maybe_invoke_event
+
+   $retref = $notifier->maybe_invoke_event( $event_name, @args )
 
 Similar to C<invoke_event> but will return C<undef> if the object cannot
 handle the name event, rather than throwing an exception. In order to
@@ -803,7 +847,9 @@ sub maybe_invoke_event
 
 =cut
 
-=head2 $notifier->debug_printf( $format, @args )
+=head2 debug_printf
+
+   $notifier->debug_printf( $format, @args )
 
 Conditionally print a debugging message to C<STDERR> if debugging is enabled.
 If such a message is printed, it will be printed using C<printf> using the
@@ -824,8 +870,8 @@ For example, invoking
 
  $stream->debug_printf( "EVENT on_read" )
 
-On an C<IO::Async::Stream> instance reading and writing a file descriptor
-whose C<fileno> is 4, which is a child of an C<IO::Async::Protocol::Stream>,
+On an L<IO::Async::Stream> instance reading and writing a file descriptor
+whose C<fileno> is 4, which is a child of an L<IO::Async::Protocol::Stream>,
 will produce a line of output:
 
  [Ia:Stream{rw=4}<-IaP:Stream] EVENT on_read
@@ -874,7 +920,9 @@ sub _debug_printf_event
    }
 }
 
-=head2 $notifier->invoke_error( $message, $name, @details )
+=head2 invoke_error
+
+   $notifier->invoke_error( $message, $name, @details )
 
 Invokes the stored C<on_error> event handler, passing in the given arguments.
 If no handler is defined, it will be passed up to the containing parent
