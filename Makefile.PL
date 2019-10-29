@@ -7,7 +7,6 @@ WriteMakefile
   'VERSION_FROM' => 'lib/IO/Async.pm',
   'PREREQ_PM' => {
                    'Exporter' => '5.57',
-                   'File::Temp' => 0,
                    'File::stat' => 0,
                    'Future' => '0.22',
                    'Future::Utils' => '0.18',
@@ -15,10 +14,6 @@ WriteMakefile
                    'Socket' => '2.007',
                    'Storable' => 0,
                    'Struct::Dumb' => 0,
-                   'Test::Fatal' => 0,
-                   'Test::Identity' => 0,
-                   'Test::More' => '0.88',
-                   'Test::Refcount' => 0,
                    'Time::HiRes' => 0
                  },
   'INSTALLDIRS' => 'site',

@@ -231,4 +231,33 @@ testing_loop( $loop );
    $loop->remove( $channel_rd );
 }
 
+# Sereal encoder
+SKIP: {
+   skip "Sereal is not available", 1 unless eval { require Sereal::Encoder; require Sereal::Decoder; };
+
+   my ( $pipe_rd, $pipe_wr ) = IO::Async::OS->pipepair;
+
+   my $channel_rd = IO::Async::Channel->new(
+      codec => "Sereal"
+   );
+   $channel_rd->setup_async_mode( read_handle => $pipe_rd );
+
+   $loop->add( $channel_rd );
+
+   my $channel_wr = IO::Async::Channel->new(
+      codec => "Sereal",
+   );
+   $channel_wr->setup_sync_mode( $pipe_wr );
+
+   $channel_wr->send( [ data => "by sync" ] );
+
+   my $recv_f = $channel_rd->recv;
+
+   wait_for { $recv_f->is_ready };
+
+   is_deeply( scalar $recv_f->get, [ data => "by sync" ], 'Channel can use Sereal as codec' );
+
+   $loop->remove( $channel_rd );
+}
+
 done_testing;

@@ -1,14 +1,14 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2012-2014 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2012-2015 -- leonerd@leonerd.org.uk
 
 package IO::Async::OS;
 
 use strict;
 use warnings;
 
-our $VERSION = '0.64';
+our $VERSION = '0.65';
 
 our @ISA = qw( IO::Async::OS::_Base );
 
@@ -70,6 +70,9 @@ use constant HAVE_THREADS => !$ENV{IO_ASYNC_NO_THREADS} &&
 
 # Preferred trial order for built-in Loop classes
 use constant LOOP_BUILTIN_CLASSES => qw( Poll Select );
+
+# Should there be any other Loop classes we try before the builtin ones?
+use constant LOOP_PREFER_CLASSES => ();
 
 =head1 NAME
 
@@ -409,18 +412,21 @@ sub extract_addrinfo
       @ai = @$ai;
    }
    elsif( ref $ai eq "HASH" ) {
-      @ai = @{$ai}{qw( family socktype protocol addr )};
+      $ai = { %$ai }; # copy so we can delete from it
+      @ai = delete @{$ai}{qw( family socktype protocol addr )};
+
+      if( defined $ai[ADDRINFO_FAMILY] and !defined $ai[ADDRINFO_ADDR] ) {
+         my $family = $ai[ADDRINFO_FAMILY];
+         my $method = "_extract_addrinfo_$family";
+         my $code = $self->can( $method ) or croak "Cannot determine addr for extract_addrinfo on family='$family'";
+
+         $ai[ADDRINFO_ADDR] = $code->( $self, $ai );
+
+         keys %$ai and croak "Unrecognised '$family' addrinfo keys: " . join( ", ", keys %$ai );
+      }
    }
    else {
       croak "Expected '$argname' to be an ARRAY or HASH reference";
-   }
-
-   if( defined $ai[ADDRINFO_FAMILY] and !defined $ai[ADDRINFO_ADDR] and ref $ai eq "HASH" ) {
-      my $family = $ai[ADDRINFO_FAMILY];
-      my $method = "_extract_addrinfo_$family";
-      my $code = $self->can( $method ) or croak "Cannot determine addr for extract_addrinfo on family='$family'";
-
-      $ai[ADDRINFO_ADDR] = $code->( $self, $ai );
    }
 
    $ai[ADDRINFO_FAMILY]   = $self->getfamilybyname( $ai[ADDRINFO_FAMILY] );
@@ -446,8 +452,8 @@ sub _extract_addrinfo_inet
    my $self = shift;
    my ( $ai ) = @_;
 
-   my $port = $ai->{port} || 0;
-   my $ip   = $ai->{ip}   || "0.0.0.0";
+   my $port = delete $ai->{port} || 0;
+   my $ip   = delete $ai->{ip}   || "0.0.0.0";
 
    return pack_sockaddr_in( $port, inet_aton( $ip ) );
 }
@@ -469,10 +475,10 @@ sub _extract_addrinfo_inet6
    my $self = shift;
    my ( $ai ) = @_;
 
-   my $port     = $ai->{port}     || 0;
-   my $ip       = $ai->{ip}       || "::";
-   my $scopeid  = $ai->{scopeid}  || 0;
-   my $flowinfo = $ai->{flowinfo} || 0;
+   my $port     = delete $ai->{port}     || 0;
+   my $ip       = delete $ai->{ip}       || "::";
+   my $scopeid  = delete $ai->{scopeid}  || 0;
+   my $flowinfo = delete $ai->{flowinfo} || 0;
 
    if( HAVE_SOCKADDR_IN6 ) {
       return pack_sockaddr_in6( $port, inet_pton( AF_INET6, $ip ), $scopeid, $flowinfo );
@@ -493,7 +499,7 @@ sub _extract_addrinfo_unix
    my $self = shift;
    my ( $ai ) = @_;
 
-   defined( my $path = $ai->{path} ) or croak "Expected 'path' for extract_addrinfo on family='unix'";
+   defined( my $path = delete $ai->{path} ) or croak "Expected 'path' for extract_addrinfo on family='unix'";
 
    return pack_sockaddr_un( $path );
 }

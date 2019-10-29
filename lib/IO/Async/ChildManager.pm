@@ -8,7 +8,7 @@ package IO::Async::ChildManager;
 use strict;
 use warnings;
 
-our $VERSION = '0.64';
+our $VERSION = '0.65';
 
 # Not a notifier
 
@@ -359,6 +359,16 @@ Shortcuts for C<fd0>, C<fd1> and C<fd2> respectively.
 =item env => HASH
 
 A reference to a hash to set as the child process's environment.
+
+Note that this will entirely set a new environment, completely replacing the
+existing one. If you want to simply add new keys or change the values of some
+keys without removing the other existing ones, you can simply copy C<%ENV>
+into the hash before setting new keys:
+
+ env => {
+    %ENV,
+    ANOTHER => "key here",
+ }
 
 =item nice => INT
 

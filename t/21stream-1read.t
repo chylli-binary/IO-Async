@@ -530,6 +530,29 @@ my @sub_lines;
    # No need to remove as ->close did it
 }
 
+# RT101774
+{
+   my ( $rd, $wr ) = mkhandles;
+
+   my $stream = IO::Async::Stream->new( read_handle => $rd,
+      on_read => sub { 0 },
+   );
+
+   $loop->add( $stream );
+
+   $wr->syswrite( "lalaLALA" );
+
+   my $f = $stream->read_exactly( 4 )->then( sub {
+      $stream->read_exactly( 4 );
+   });
+
+   wait_for { $f->is_ready };
+
+   is( scalar $f->get, "LALA", 'chained ->read_exactly' );
+
+   $loop->remove( $stream );
+}
+
 # watermarks
 {
    my ( $rd, $wr ) = mkhandles;

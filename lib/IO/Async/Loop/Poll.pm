@@ -1,14 +1,14 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2007-2014 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2007-2015 -- leonerd@leonerd.org.uk
 
 package IO::Async::Loop::Poll;
 
 use strict;
 use warnings;
 
-our $VERSION = '0.64';
+our $VERSION = '0.65';
 use constant API_VERSION => '0.49';
 
 use base qw( IO::Async::Loop );
@@ -62,16 +62,34 @@ program already using an C<IO::Poll> object.
 
 =head1 DESCRIPTION
 
-This subclass of C<IO::Async::Loop> uses an C<IO::Poll> object to perform
+This subclass of C<IO::Async::Loop> uses the C<poll(2)> system call to perform
 read-ready and write-ready tests.
 
-To integrate with existing code that uses an C<IO::Poll>, a C<post_poll> can
-be called immediately after the C<poll> method on the contained C<IO::Poll>
-object. The appropriate mask bits are maintained on the C<IO::Poll> object
-when notifiers are added or removed from the set, or when they change their
-C<want_writeready> status. The C<post_poll> method inspects the result bits
-and invokes the C<on_read_ready> or C<on_write_ready> methods on the
-notifiers.
+By default, this loop will use the underlying C<poll()> system call directly,
+bypassing the usual L<IO::Poll> object wrapper around it because of a number
+of bugs and design flaws in that class; namely
+
+=over 2
+
+=item *
+
+L<https://rt.cpan.org/Ticket/Display.html?id=93107> - IO::Poll relies on
+stable stringification of IO handles
+
+=item *
+
+L<https://rt.cpan.org/Ticket/Display.html?id=25049> - IO::Poll->poll() with no
+handles always returns immediately
+
+=back
+
+However, to integrate with existing code that uses an C<IO::Poll> object, a
+C<post_poll> can be called immediately after the C<poll> method that
+C<IO::Poll> object. The appropriate mask bits are maintained on the
+C<IO::Poll> object when notifiers are added or removed from the loop, or when
+they change their C<want_*> status. The C<post_poll> method inspects the
+result bits and invokes the C<on_read_ready> or C<on_write_ready> methods on
+the notifiers.
 
 =cut
 
@@ -89,7 +107,8 @@ takes the following named arguments:
 =item C<poll>
 
 The C<IO::Poll> object to use for notification. Optional; if a value is not
-given, a new C<IO::Poll> object will be constructed.
+given, the underlying C<IO::Poll::_poll()> function is invoked directly,
+outside of the object wrapping.
 
 =back
 
@@ -102,11 +121,10 @@ sub new
 
    my $poll = delete $args{poll};
 
-   $poll ||= IO::Poll->new;
-
    my $self = $class->__new( %args );
 
    $self->{poll} = $poll;
+   $self->{pollmask} = {};
 
    return $self;
 }
@@ -115,21 +133,13 @@ sub new
 
 =cut
 
-=head2 $count = $loop->post_poll( $poll )
+=head2 $count = $loop->post_poll
 
 This method checks the returned event list from a C<IO::Poll::poll> call,
 and calls any of the notification methods or callbacks that are appropriate.
 It returns the total number of callbacks that were invoked; that is, the
 total number of C<on_read_ready> and C<on_write_ready> callbacks for 
 C<watch_io>, and C<watch_time> event callbacks.
-
-=over 8
-
-=item $poll
-
-Reference to the C<IO::Poll> object
-
-=back
 
 =cut
 
@@ -147,7 +157,8 @@ sub post_poll
    foreach my $fd ( keys %$iowatches ) {
       my $watch = $iowatches->{$fd} or next;
 
-      my $events = $poll->events( $watch->[0] );
+      my $events = $poll ? $poll->events( $watch->[0] )
+                         : $self->{pollevents}{$fd};
       if( FAKE_ISREG_READY and $self->{fake_isreg}{$fd} ) {
          $events |= $self->{fake_isreg}{$fd} & ( POLLIN|POLLOUT );
       }
@@ -202,38 +213,56 @@ sub loop_once
       $timeout += ( 1 - $fraction ) / 1000 if $fraction;
    }
 
-   my $poll = $self->{poll};
+   if( my $poll = $self->{poll} ) {
+      my $pollret;
 
-   my $pollret;
+      # There is a bug in IO::Poll at least version 0.07, where poll with no
+      # registered masks returns immediately, rather than waiting for a timeout
+      # This has been reported: 
+      #   http://rt.cpan.org/Ticket/Display.html?id=25049
+      if( $poll->handles ) {
+         $pollret = $poll->poll( $timeout );
 
-   # There is a bug in IO::Poll at least version 0.07, where poll with no
-   # registered masks returns immediately, rather than waiting for a timeout
-   # This has been reported: 
-   #   http://rt.cpan.org/Ticket/Display.html?id=25049
-   if( $poll->handles ) {
-      $pollret = $poll->poll( $timeout );
+         if( ( $pollret == -1 and $! == EINTR ) or $pollret == 0 
+                 and defined $self->{sigproxy} ) {
+            # A signal occured and we have a sigproxy. Allow one more poll call
+            # with zero timeout. If it finds something, keep that result. If it
+            # finds nothing, keep -1
 
-      if( ( $pollret == -1 and $! == EINTR ) or $pollret == 0 
-              and defined $self->{sigproxy} ) {
-         # A signal occured and we have a sigproxy. Allow one more poll call
-         # with zero timeout. If it finds something, keep that result. If it
-         # finds nothing, keep -1
+            # Preserve $! whatever happens
+            local $!;
 
-         # Preserve $! whatever happens
-         local $!;
-
-         my $secondattempt = $poll->poll( 0 );
-         $pollret = $secondattempt if $secondattempt > 0;
+            my $secondattempt = $poll->poll( 0 );
+            $pollret = $secondattempt if $secondattempt > 0;
+         }
       }
+      else {
+         # Workaround - we'll use select to fake a millisecond-accurate sleep
+         $pollret = select( undef, undef, undef, $timeout );
+      }
+
+      return undef unless defined $pollret;
+      return $self->post_poll;
    }
    else {
-      # Workaround - we'll use select to fake a millisecond-accurate sleep
-      $pollret = select( undef, undef, undef, $timeout );
+      my $msec = defined $timeout ? $timeout * 1000 : -1;
+      my @pollmasks = %{ $self->{pollmask} };
+
+      my $pollret = IO::Poll::_poll( $msec, @pollmasks );
+      if( $pollret == -1 and $! == EINTR or
+          $pollret == 0 and $self->{sigproxy} ) {
+         local $!;
+
+         @pollmasks = %{ $self->{pollmask} };
+         my $secondattempt = IO::Poll::_poll( $msec, @pollmasks );
+         $pollret = $secondattempt if $secondattempt > 0;
+      }
+
+      return undef unless defined $pollret;
+
+      $self->{pollevents} = { @pollmasks };
+      return $self->post_poll;
    }
-
-   return undef unless defined $pollret;
-
-   return $self->post_poll;
 }
 
 sub watch_io
@@ -246,8 +275,11 @@ sub watch_io
    my $poll = $self->{poll};
 
    my $handle = $params{handle};
+   my $fileno = $handle->fileno;
 
-   my $curmask = $poll->mask( $handle ) || 0;
+   my $curmask = $poll ? $poll->mask( $handle )
+                       : $self->{pollmask}{$fileno};
+   $curmask ||= 0;
 
    my $mask = $curmask;
    $params{on_read_ready}  and $mask |= POLLIN;
@@ -255,10 +287,13 @@ sub watch_io
    $params{on_hangup}      and $mask |= POLLHUP;
 
    if( FAKE_ISREG_READY and S_ISREG +(stat $handle)[2] ) {
-      $self->{fake_isreg}{$handle->fileno} = $mask;
+      $self->{fake_isreg}{$fileno} = $mask;
    }
 
-   $poll->mask( $handle, $mask ) if $mask != $curmask;
+   return if $mask == $curmask;
+
+   $poll ? $poll->mask( $handle, $mask )
+         : ( $self->{pollmask}{$fileno} = $mask );
 }
 
 sub unwatch_io

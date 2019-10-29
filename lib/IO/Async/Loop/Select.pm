@@ -1,14 +1,14 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2007-2013 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2007-2015 -- leonerd@leonerd.org.uk
 
 package IO::Async::Loop::Select;
 
 use strict;
 use warnings;
 
-our $VERSION = '0.64';
+our $VERSION = '0.65';
 use constant API_VERSION => '0.49';
 
 use base qw( IO::Async::Loop );
@@ -177,7 +177,7 @@ sub post_select
    alarm( IO::Async::Loop->WATCHDOG_INTERVAL ) if WATCHDOG_ENABLE;
 
    foreach my $fd ( keys %$iowatches ) {
-      my $watch = $iowatches->{$fd};
+      my $watch = $iowatches->{$fd} or next;
 
       my $fileno = $watch->[0]->fileno;
 

@@ -1,14 +1,14 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2014 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2014-2015 -- leonerd@leonerd.org.uk
 
 package IO::Async::OS::linux;
 
 use strict;
 use warnings;
 
-our $VERSION = '0.64';
+our $VERSION = '0.65';
 
 our @ISA = qw( IO::Async::OS::_Base );
 
@@ -23,6 +23,9 @@ This module contains OS support code for C<Linux>.
 See instead L<IO::Async::OS>.
 
 =cut
+
+# Suggest either Epoll or Ppoll loops first if they are installed
+use constant LOOP_PREFER_CLASSES => qw( Epoll Ppoll );
 
 # Try to use /proc/pid/fd to get the list of actually-open file descriptors
 # for our process. Saves a bit of time when running with high ulimit -n /

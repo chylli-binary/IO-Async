@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use 5.010; # //
 
-our $VERSION = '0.64';
+our $VERSION = '0.65';
 
 use base qw( IO::Async::Handle );
 
@@ -897,6 +897,8 @@ sub _flush_one_read
    my $self = shift;
    my ( $eof ) = @_;
 
+   local $self->{flushing_read} = 1;
+
    my $readqueue = $self->{readqueue};
 
    my $ret;
@@ -1040,6 +1042,7 @@ sub push_on_read
    push @{ $self->{readqueue} }, Reader( $on_read, $args{future} );
 
    # TODO: Should this always defer?
+   return if $self->{flushing_read};
    1 while length $self->{readbuff} and $self->_flush_one_read( 0 );
 }
 

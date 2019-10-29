@@ -16,7 +16,8 @@ my $LOOPCLASS = "IO::Async::Loop::" . ( IO::Async::OS->LOOP_BUILTIN_CLASSES )[0]
 
 $loop = IO::Async::Loop->new;
 
-isa_ok( $loop, $LOOPCLASS, 'Magic constructor in default mode' );
+isa_ok( $loop, $LOOPCLASS, 'Magic constructor in default mode' ) or
+   diag( 'ref($loop) is ' . ref $loop );
 
 is( IO::Async::Loop->new, $loop, 'IO::Async::Loop->new again yields same loop' );
 

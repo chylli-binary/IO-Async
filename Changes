@@ -1,5 +1,22 @@
 Revision history for IO-Async
 
+0.65    2015/02/15 14:28:02
+        [CHANGES]
+         * Optionally allow IO::Async::Channel to use 'Sereal' serialisation
+         * Added documentation about the 'env' Child Manager key and copying
+           %ENV
+         * Take OS "preferred loop subclass" hints from IO::Async::OS directly
+
+        [BUGFIXES]
+         * Nested $stream->read_* inside read_* cause double-completion of
+           Future (RT101774)
+         * Implement IO::Async::Loop::Poll directly on _poll() syscall
+           wrapper, thus avoiding many bugs in IO::Poll (RT93141)
+         * Ensure that IO::Async::Loop::Select can cope with callbacks that
+           remove other IO handle watches (RT101919)
+         * Silently upgrade watched IO handles to O_NONBLOCK (RT102044)
+         * Complain about unrecognised keys to ->extract_addrinfo (RT101453)
+
 0.64    2014/10/17 17:51:07
         [CHANGES]
          * Make specific mention of 'TCP' and 'UDP' around socket examples

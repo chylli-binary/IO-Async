@@ -1,14 +1,14 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2007-2013 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2007-2015 -- leonerd@leonerd.org.uk
 
 package IO::Async::Loop;
 
 use strict;
 use warnings;
 
-our $VERSION = '0.64';
+our $VERSION = '0.65';
 
 # When editing this value don't forget to update the docs below
 use constant NEED_API_VERSION => '0.33';
@@ -235,11 +235,20 @@ In cases where the module subclass is a hard requirement, such as GTK programs
 using C<Glib>, it would be better to use the module specifically and invoke
 its constructor directly.
 
+=item * IO::Async::OS->LOOP_PREFER_CLASSES
+
+The L<IO::Async::OS> hints module for the given OS is then consulted to see if
+it suggests any other module classes specific to the given operating system.
+
 =item * $^O
 
 The module called C<IO::Async::Loop::$^O> is tried next. This allows specific
 OSes, such as the ever-tricky C<MSWin32>, to provide an implementation that
 might be more efficient than the generic ones, or even work at all.
+
+This option is now discouraged in favour of the C<IO::Async::OS> hint instead.
+At some future point it may be removed entirely, given as currently only
+C<linux> uses it.
 
 =item * Poll and Select
 
@@ -309,7 +318,14 @@ sub really_new
       warn "Unable to use $class - $topline\n";
    }
 
-   $self = __try_new( "IO::Async::Loop::$^O" ) and return $self unless $LOOP_NO_OS;
+   unless( $LOOP_NO_OS ) {
+      foreach my $class ( IO::Async::OS->LOOP_PREFER_CLASSES, "IO::Async::Loop::$^O" ) {
+         $class =~ m/::/ or $class = "IO::Async::Loop::$class";
+         $self = __try_new( $class ) and return $self;
+
+         # Don't complain about these ones
+      }
+   }
 
    return IO::Async::Loop->new_builtin;
 }
@@ -2011,6 +2027,10 @@ existing one of that type. It is not required that both are provided.
 Applications should use a C<IO::Async::Handle> or C<IO::Async::Stream> instead
 of using this method.
 
+If the filehandle does not yet have the C<O_NONBLOCK> flag set, it will be
+enabled by this method. This will ensure that any subsequent C<sysread>,
+C<syswrite>, or similar will not block on the filehandle.
+
 =cut
 
 # This class specifically does NOT implement this method, so that subclasses
@@ -2021,6 +2041,10 @@ sub __watch_io
    my %params = @_;
 
    my $handle = delete $params{handle} or croak "Expected 'handle'";
+   defined eval { $handle->fileno } or croak "Expected that 'handle' has defined ->fileno";
+
+   # Silent "upgrade" to O_NONBLOCK
+   $handle->blocking and $handle->blocking(0);
 
    my $watch = ( $self->{iowatches}->{$handle->fileno} ||= [] );
 

@@ -1,18 +1,17 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2011-2014 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2011-2015 -- leonerd@leonerd.org.uk
 
 package IO::Async::Channel;
 
 use strict;
 use warnings;
-use base qw( IO::Async::Notifier ); # just to get _capture_weakself
+use base qw( IO::Async::Notifier );
 
-our $VERSION = '0.64';
+our $VERSION = '0.65';
 
 use Carp;
-use Storable qw( freeze thaw );
 
 use IO::Async::Stream;
 
@@ -43,10 +42,23 @@ retrieved from it by the C<recv> method. Values inserted into the Channel are
 snapshot by the C<send> method. Any changes to referred variables will not be
 observed by the other end of the Channel after the C<send> method returns.
 
-Since the channel uses L<Storable> to serialise values to write over the
-communication filehandle only reference values may be passed. To pass a single
-scalar value, C<send> a SCALAR reference to it, and dereference the result of
-C<recv>.
+=head1 PARAMETERS
+
+The following named parameters may be passed to C<new> or C<configure>:
+
+=head2 codec => STR
+
+Gives the name of the encoding method used to represent values over the
+channel.
+
+By default this will be C<Storable>, to use the core L<Storable> module. As
+this only supports references, to pass a single scalar value, C<send> a SCALAR
+reference to it, and dereference the result of C<recv>.
+
+If the L<Sereal::Encoder> and L<Sereal::Decoder> modules are installed, this
+can be set to C<Sereal> instead, and will use those to perform the encoding
+and decoding. This optional dependency may give higher performance than using
+C<Storable>.
 
 =cut
 
@@ -61,20 +73,11 @@ should be shared by both sides of a C<fork()>ed process. After C<fork()> the
 two C<setup_*> methods may be used to configure the object for operation on
 either end.
 
-While this object does in fact inherit from L<IO::Async::Notifier> for
-implementation reasons it is not intended that this object be used as a
-Notifier. It should not be added to a Loop object directly; event management
-will be handled by its containing C<IO::Async::Routine> object.
+While this object does in fact inherit from L<IO::Async::Notifier>, it should
+not be added to a Loop object directly; event management will be handled by
+its containing C<IO::Async::Routine> object.
 
 =cut
-
-sub new
-{
-   my $class = shift;
-   return bless {
-      mode => "",
-   }, $class;
-}
 
 =head1 METHODS
 
@@ -108,6 +111,16 @@ channel gets closed by the peer.
 
 =cut
 
+sub _init
+{
+   my $self = shift;
+   my ( $params ) = @_;
+
+   $params->{codec} //= "Storable";
+
+   $self->SUPER::_init( $params );
+}
+
 sub configure
 {
    my $self = shift;
@@ -122,7 +135,36 @@ sub configure
       $self->_build_stream;
    }
 
+   if( my $codec = delete $params{codec} ) {
+      ( $self->can( "_make_codec_$codec" ) or croak "Unrecognised codec name '$codec'" )
+         ->( $self );
+   }
+
    $self->SUPER::configure( %params );
+}
+
+sub _make_codec_Storable
+{
+   my $self = shift;
+
+   require Storable;
+
+   $self->{encode} = \&Storable::freeze;
+   $self->{decode} = \&Storable::thaw;
+}
+
+sub _make_codec_Sereal
+{
+   my $self = shift;
+
+   require Sereal::Encoder;
+   require Sereal::Decoder;
+
+   my $encoder = Sereal::Encoder->new;
+   $self->{encode} = sub { $encoder->encode( $_[0] ) };
+
+   my $decoder = Sereal::Decoder->new;
+   $self->{decode} = sub { $decoder->decode( $_[0] ) };
 }
 
 =head2 $channel->send( $data )
@@ -140,8 +182,7 @@ sub send
    my $self = shift;
    my ( $data ) = @_;
 
-   my $record = freeze $data;
-   $self->send_frozen( $record );
+   $self->send_frozen( $self->{encode}->( $data ) );
 }
 
 =head2 $channel->send_frozen( $record )
@@ -271,7 +312,7 @@ sub _recv_sync
    defined $n or die "Cannot read - $!";
    length $n or return undef;
 
-   return thaw $record;
+   return $self->{decode}->( $record );
 }
 
 sub _send_sync
@@ -384,7 +425,7 @@ sub _on_stream_read
    my $len = unpack( "I", $$buffref );
    return 0 unless length( $$buffref ) >= 4 + $len;
 
-   my $record = thaw( substr( $$buffref, 4, $len ) );
+   my $record = $self->{decode}->( substr( $$buffref, 4, $len ) );
    substr( $$buffref, 0, 4 + $len ) = "";
 
    if( my $on_result = shift @{ $self->{on_result_queue} } ) {

@@ -1,7 +1,7 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2009-2013 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2009-2015 -- leonerd@leonerd.org.uk
 
 package IO::Async::LoopTests;
 
@@ -27,7 +27,7 @@ use POSIX qw( SIGTERM );
 use Socket qw( sockaddr_family AF_UNIX );
 use Time::HiRes qw( time );
 
-our $VERSION = '0.64';
+our $VERSION = '0.65';
 
 # Abstract Units of Time
 use constant AUT => $ENV{TEST_QUICK_TIMERS} ? 0.1 : 1;
@@ -158,7 +158,7 @@ Tests the Loop's ability to watch filehandles for IO readiness
 
 =cut
 
-use constant count_tests_io => 17;
+use constant count_tests_io => 18;
 sub run_tests_io
 {
    {
@@ -334,6 +334,28 @@ sub run_tests_io
       $loop->loop_once( 0.1 );
 
       is( $callcount, 1, 'read/write_ready can cancel each other' );
+   }
+
+   # Check that cross-connected handlers can cancel each other
+   {
+      my ( $SA1, $SA2 ) = IO::Async::OS->socketpair or die "Cannot socketpair - $!";
+      my ( $SB1, $SB2 ) = IO::Async::OS->socketpair or die "Cannot socketpair - $!";
+      $_->blocking( 0 ) for $SA1, $SA2, $SB1, $SB2;
+
+      my @handles = ( $SA1, $SB1 );
+
+      my $callcount = 0;
+      $loop->watch_io(
+         handle => $_,
+         on_write_ready => sub {
+            $callcount++;
+            $loop->unwatch_io( handle => $_, on_write_ready => 1 ) for @handles;
+         },
+      ) for @handles;
+
+      $loop->loop_once( 0.1 );
+
+      is( $callcount, 1, 'write_ready on crosslinked handles can cancel each other' );
    }
 
    # Check that error conditions that aren't true read/write-ability are still

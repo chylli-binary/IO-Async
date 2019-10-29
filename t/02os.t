@@ -4,6 +4,7 @@ use strict;
 use warnings;
 
 use Test::More;
+use Test::Fatal;
 
 use IO::Async::OS;
 
@@ -129,6 +130,11 @@ is( IO::Async::OS->getsocktypebyname( SOCK_STREAM ), SOCK_STREAM, 'getsocktypeby
                 } ) ],
               [ AF_INET, SOCK_STREAM, 0, pack_sockaddr_in( 0, INADDR_ANY ) ],
               'extract_addrinfo( HASH ) with inet only' );
+
+   ok( exception { IO::Async::OS->extract_addrinfo( {
+                     family  => "inet",
+                     host    => "foobar.com",
+                   } ) }, 'extract_addrinfo for inet complains about unrecognised key' );
 }
 
 SKIP: {
@@ -157,5 +163,8 @@ SKIP: {
               [ AF_UNIX, SOCK_STREAM, 0, $sunaddr ],
               'extract_addrinfo( HASH ) with unix, path' );
 }
+
+ok( exception { IO::Async::OS->extract_addrinfo( { family => "hohum" } ) },
+   'extract_addrinfo on unrecognised family complains' );
 
 done_testing;
