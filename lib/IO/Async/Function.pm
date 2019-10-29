@@ -8,7 +8,7 @@ package IO::Async::Function;
 use strict;
 use warnings;
 
-our $VERSION = '0.60';
+our $VERSION = '0.61';
 
 use base qw( IO::Async::Notifier );
 use IO::Async::Timer::Countdown;
@@ -113,6 +113,11 @@ The following named parameters may be passed to C<new> or C<configure>:
 
 The body of the function to execute.
 
+=item model => "spawn" | "thread"
+
+Optional. Requests a specific C<IO::Async::Routine> model. If not supplied,
+leaves the default choice up to Routine.
+
 =item min_workers => INT
 
 =item max_workers => INT
@@ -156,7 +161,7 @@ sub _init
    $self->{min_workers} = 1;
    $self->{max_workers} = 8;
 
-   $self->{workers} = {};
+   $self->{workers} = {}; # {$id} => IaFunction:Worker
 
    $self->{pending_queue} = [];
 }
@@ -167,7 +172,7 @@ sub configure
    my %params = @_;
 
    my %worker_params;
-   foreach (qw( exit_on_die max_worker_calls )) {
+   foreach (qw( model exit_on_die max_worker_calls )) {
       $self->{$_} = $worker_params{$_} = delete $params{$_} if exists $params{$_};
    }
 
@@ -193,13 +198,13 @@ sub configure
                my $workers = $self->{workers};
 
                # Shut down atmost one idle worker, starting from the highest
-               # PID. Since we search from lowest to assign work, this tries
+               # ID. Since we search from lowest to assign work, this tries
                # to ensure we'll shut down the least useful ones first,
                # keeping more useful ones in memory (page/cache warmth, etc..)
-               foreach my $pid ( reverse sort keys %$workers ) {
-                  next if $workers->{$pid}{busy};
+               foreach my $id ( reverse sort keys %$workers ) {
+                  next if $workers->{$id}{busy};
 
-                  $workers->{$pid}->stop;
+                  $workers->{$id}->stop;
                   last;
                }
 
@@ -274,6 +279,7 @@ sub stop
 {
    my $self = shift;
 
+   $self->{stopping} = 1;
    foreach my $worker ( $self->_worker_objects ) {
       $worker->stop;
    }
@@ -450,12 +456,14 @@ sub _new_worker
    my $self = shift;
 
    my $worker = IO::Async::Function::Worker->new(
-      ( map { $_ => $self->{$_} } qw( code setup exit_on_die ) ),
+      ( map { $_ => $self->{$_} } qw( model code setup exit_on_die ) ),
       max_calls => $self->{max_worker_calls},
 
       on_finish => $self->_capture_weakself( sub {
          my $self = shift or return;
          my ( $worker ) = @_;
+
+         return if $self->{stopping};
 
          $self->_new_worker if $self->workers < $self->{min_workers};
 
@@ -465,7 +473,7 @@ sub _new_worker
 
    $self->add_child( $worker );
 
-   return $self->{workers}{$worker->pid} = $worker;
+   return $self->{workers}{$worker->id} = $worker;
 }
 
 sub _get_worker
@@ -566,7 +574,7 @@ sub stop
    $worker->{arg_channel}->close;
 
    if( my $function = $worker->parent ) {
-      delete $function->{workers}{$worker->pid};
+      delete $function->{workers}{$worker->id};
    }
 }
 

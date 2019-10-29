@@ -56,7 +56,7 @@ testing_loop( $loop );
    is( $function->workers_busy, 1, '$function has 1 worker busy after ->call' );
    is( $function->workers_idle, 0, '$function has 0 worker idle after ->call' );
 
-   $loop->await( $future );
+   wait_for { $future->is_ready };
 
    my ( $result ) = $future->get;
 
@@ -171,7 +171,7 @@ testing_loop( $loop );
 
    wait_for { defined $err };
 
-   like( $err, qr/^exception name at $0 line \d+\.$/, '$err after exception' );
+   like( $err, qr/^exception name at \Q$0\E line \d+\.$/, '$err after exception' );
 
    $loop->remove( $function );
 }
@@ -241,8 +241,12 @@ testing_loop( $loop );
 }
 
 # restart after exit
-{
+SKIP: {
+   skip "This Perl does not support fork()", 4
+      if not IO::Async::OS->HAVE_POSIX_FORK;
+
    my $function = IO::Async::Function->new(
+      model => "fork",
       min_workers => 0,
       max_workers => 1,
       code => sub { $_[0] ? exit shift : return 0 },
@@ -284,18 +288,29 @@ testing_loop( $loop );
 
 ## Now test that parallel runs really are parallel
 {
+   # touch $dir/$n in each worker, touch $dir/done to finish it
+   sub touch
+   {
+      my ( $file ) = @_;
+
+      open( my $fh, ">", $file ) or die "Cannot write $file - $!";
+      close( $fh );
+   }
+
    my $function = IO::Async::Function->new(
       min_workers => 3,
       code => sub {
-         my ( $file, $ret ) = @_;
+         my ( $dir, $n ) = @_;
+         my $file = "$dir/$n";
 
-         open( my $fh, ">", $file ) or die "Cannot write $file - $!";
-         close( $file );
+         touch( $file );
 
          # Wait for synchronisation
-         sleep 0.1 while -e $file;
+         sleep 0.1 while ! -e "$dir/done";
 
-         return $ret;
+         unlink( $file );
+
+         return $n;
       },
    );
 
@@ -309,7 +324,7 @@ testing_loop( $loop );
 
    foreach my $id ( 1, 2, 3 ) {
       $function->call(
-         args => [ "$dir/$id", $id ],
+         args => [ $dir, $id ],
          on_return => sub { $ret{$id} = shift },
          on_error  => sub { die "Test failed early - @_" },
       );
@@ -320,45 +335,16 @@ testing_loop( $loop );
    ok( 1, 'synchronise files created' );
 
    # Synchronize deleting them;
-   for my $f ( "$dir/1", "$dir/2", "$dir/3" ) {
-      unlink $f or die "Cannot unlink $f - $!";
-   }
+   touch( "$dir/done" );
 
    undef %ret;
    wait_for { keys %ret == 3 };
 
+   unlink( "$dir/done" );
+
    is_deeply( \%ret, { 1 => 1, 2 => 2, 3 => 3 }, 'ret keys after parallel run' );
 
    is( scalar $function->workers, 3, '$function->workers is still 3' );
-
-   $loop->remove( $function );
-}
-
-# Test that 'setup' works
-{
-   my $function = IO::Async::Function->new(
-      code => sub {
-         return $ENV{$_[0]};
-      },
-
-      setup => [
-         env => { FOO => "Here is a random string" },
-      ],
-   );
-
-   $loop->add( $function );
-
-   my $result;
-
-   $function->call(
-      args => [ "FOO" ],
-      on_return => sub { $result = shift },
-      on_error  => sub { die "Test failed early - @_" },
-   );
-
-   wait_for { defined $result };
-
-   is( $result, "Here is a random string", '$result after call with modified ENV' );
 
    $loop->remove( $function );
 }
@@ -408,53 +394,6 @@ testing_loop( $loop );
    is( $function->workers, 0, '$function has 0 workers after longer delay' );
 
    $loop->remove( $function );
-}
-
-# Test that STDOUT/STDERR are unaffected
-{
-   my ( $pipe_rd, $pipe_wr ) = IO::Async::OS->pipepair;
-
-   my $function;
-   {
-      open my $stdoutsave, ">&", \*STDOUT;
-      POSIX::dup2( $pipe_wr->fileno, STDOUT->fileno );
-
-      open my $stderrsave, ">&", \*STDERR;
-      POSIX::dup2( $pipe_wr->fileno, STDERR->fileno );
-
-      $function = IO::Async::Function->new(
-         min_workers => 1,
-         max_workers => 1,
-         code => sub {
-            STDOUT->autoflush(1);
-            print STDOUT "A line to STDOUT\n";
-            print STDERR "A line to STDERR\n";
-            return 0;
-         }
-      );
-
-      $loop->add( $function );
-
-      POSIX::dup2( $stdoutsave->fileno, STDOUT->fileno );
-      POSIX::dup2( $stderrsave->fileno, STDERR->fileno );
-   }
-
-   my $buffer = "";
-   $loop->watch_io(
-      handle => $pipe_rd,
-      on_read_ready => sub { sysread $pipe_rd, $buffer, 8192, length $buffer or die "Cannot read - $!" },
-   );
-
-   my $result;
-   $function->call(
-      args => [],
-      on_result => sub { $result = shift; },
-   );
-
-   wait_for { defined $result and $buffer =~ m/\n.*\n/ };
-
-   is( $result, "return", 'Write-to-STD{OUT+ERR} function returned' );
-   is( $buffer, "A line to STDOUT\nA line to STDERR\n", 'Write-to-STD{OUT+ERR} wrote to pipe' );
 }
 
 # Restart

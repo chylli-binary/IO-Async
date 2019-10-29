@@ -9,11 +9,12 @@ use Test::More;
 use Test::Fatal;
 
 use File::Temp qw( tmpnam );
-use POSIX qw( WIFEXITED WEXITSTATUS ENOENT EBADF getcwd );
-
-use IO::Async::OS;
+use POSIX qw( ENOENT EBADF getcwd );
 
 use IO::Async::Loop;
+use IO::Async::OS;
+
+plan skip_all => "POSIX fork() is not available" unless IO::Async::OS->HAVE_POSIX_FORK;
 
 my $loop = IO::Async::Loop->new_builtin;
 
@@ -47,8 +48,8 @@ sub TEST
    wait_for { defined $exitcode };
 
    if( exists $attr{exitstatus} ) {
-      ok( WIFEXITED($exitcode), "WIFEXITED(\$exitcode) after $name" );
-      is( WEXITSTATUS($exitcode), $attr{exitstatus}, "WEXITSTATUS(\$exitcode) after $name" );
+      ok( ($exitcode & 0x7f) == 0, "WIFEXITED(\$exitcode) after $name" );
+      is( ($exitcode >> 8), $attr{exitstatus}, "WEXITSTATUS(\$exitcode) after $name" );
    }
 
    if( exists $attr{dollarbang} ) {

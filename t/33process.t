@@ -8,12 +8,15 @@ use IO::Async::Test;
 use Test::More;
 use Test::Refcount;
 
-use POSIX qw( WIFEXITED WEXITSTATUS ENOENT SIGTERM SIGUSR1 );
+use POSIX qw( ENOENT SIGTERM SIGUSR1 );
 use constant ENOENT_MESSAGE => do { local $! = ENOENT; "$!" };
 
 use IO::Async::Process;
 
 use IO::Async::Loop;
+use IO::Async::OS;
+
+plan skip_all => "POSIX fork() is not available" unless IO::Async::OS->HAVE_POSIX_FORK;
 
 my $loop = IO::Async::Loop->new_builtin;
 
@@ -50,8 +53,8 @@ testing_loop( $loop );
    is( $invocant, $process, '$_[0] in on_finish is $process' );
    undef $invocant; # refcount
 
-   ok( WIFEXITED($exitcode),      'WIFEXITED($exitcode) after sub { 0 }' );
-   is( WEXITSTATUS($exitcode), 0, 'WEXITSTATUS($exitcode) after sub { 0 }' );
+   ok( ($exitcode & 0x7f) == 0, 'WIFEXITED($exitcode) after sub { 0 }' );
+   is( ($exitcode >> 8), 0,     'WEXITSTATUS($exitcode) after sub { 0 }' );
 
    ok( !$process->is_running, '$process no longer running' );
    ok( defined $process->pid, '$process still has PID after exit' );
@@ -100,9 +103,9 @@ testing_loop( $loop );
    is( $invocant, $process, '$_[0] in on_exception is $process' );
    undef $invocant; # refcount
 
-   ok( WIFEXITED($exitcode),        'WIFEXITED($exitcode) after sub { die }' );
-   is( WEXITSTATUS($exitcode), 255, 'WEXITSTATUS($exitcode) after sub { die }' );
-   is( $exception, "An exception\n",        '$exception after sub { die }' );
+   ok( ($exitcode & 0x7f) == 0,      'WIFEXITED($exitcode) after sub { die }' );
+   is( ($exitcode >> 8), 255,        'WEXITSTATUS($exitcode) after sub { die }' );
+   is( $exception, "An exception\n", '$exception after sub { die }' );
 
    ok( $process->is_exited,           '$process->is_exited after sub { die }' );
    is( $process->exitstatus, 255,     '$process->exitstatus after sub { die }' );
@@ -123,8 +126,8 @@ testing_loop( $loop );
 
    wait_for { defined $exitcode };
 
-   ok( WIFEXITED($exitcode),        'WIFEXITED($exitcode) after sub { die } on_finish' );
-   is( WEXITSTATUS($exitcode), 255, 'WEXITSTATUS($exitcode) after sub { die } on_finish' );
+   ok( ($exitcode & 0x7f) == 0, 'WIFEXITED($exitcode) after sub { die } on_finish' );
+   is( ($exitcode >> 8), 255,   'WEXITSTATUS($exitcode) after sub { die } on_finish' );
 
    ok( $process->is_exited,           '$process->is_exited after sub { die } on_finish' );
    is( $process->exitstatus, 255,     '$process->exitstatus after sub { die } on_finish' );
@@ -205,7 +208,9 @@ testing_loop( $loop );
    is( $process->exitstatus, 0, '$process->exitstatus after %ENV test' );
 }
 
-{
+SKIP: {
+   skip "This OS does not have signals", 2 unless IO::Async::OS->HAVE_SIGNALS;
+
    my $child_ready;
    $loop->watch_signal( USR1 => sub { $child_ready++ } );
 

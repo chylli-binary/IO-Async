@@ -9,13 +9,15 @@ package # hide from CPAN
 use strict;
 use warnings;
 
-our $VERSION = '0.60';
+our $VERSION = '0.61';
+
+use Scalar::Util qw( weaken );
 
 use POSIX qw( EINPROGRESS );
 use Socket qw( SOL_SOCKET SO_ERROR );
 
 use Future;
-use Future::Utils 0.16 qw( repeat_until_success );
+use Future::Utils 0.18 qw( try_repeat_until_success );
 
 use IO::Async::OS;
 
@@ -31,9 +33,8 @@ sub new
 
    my $loop = delete $params{loop} or croak "Expected a 'loop'";
 
-   my $self = bless {
-      loop => $loop,
-   }, $class;
+   my $self = bless {}, $class;
+   weaken( $self->{loop} = $loop );
 
    return $self;
 }
@@ -84,7 +85,7 @@ sub _connect_addresses
 
    my ( $connecterr, $binderr, $socketerr );
 
-   my $future = repeat_until_success {
+   my $future = try_repeat_until_success {
       my $addr = shift;
       my ( $family, $socktype, $protocol, $localaddr, $peeraddr ) =
          @{$addr}{qw( family socktype protocol localaddr peeraddr )};
@@ -208,11 +209,6 @@ sub connect
    }
 
    return Future->needs_all( $peeraddrfuture, $localaddrfuture )
-      ->or_else( sub {
-         my $f = shift;
-         my ( $failure, @args ) = $f->failure;
-         return $loop->new_future->fail( $failure, resolve => @args );
-      } )
       ->and_then( sub {
          my @peeraddrs  = $peeraddrfuture->get;
          my @localaddrs = $localaddrfuture->get;
