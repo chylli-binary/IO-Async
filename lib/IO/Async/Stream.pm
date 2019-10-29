@@ -7,9 +7,8 @@ package IO::Async::Stream;
 
 use strict;
 use warnings;
-use 5.010; # //
 
-our $VERSION = '0.69';
+our $VERSION = '0.70';
 
 use base qw( IO::Async::Handle );
 
@@ -389,8 +388,11 @@ sub configure
    }
 
    if( exists $params{read_high_watermark} or exists $params{read_low_watermark} ) {
-      my $high = delete $params{read_high_watermark} // $self->{read_high_watermark};
-      my $low  = delete $params{read_low_watermark}  // $self->{read_low_watermark};
+      my $high = delete $params{read_high_watermark};
+      defined $high or $high = $self->{read_high_watermark};
+
+      my $low  = delete $params{read_low_watermark};
+      defined $low  or $low  = $self->{read_low_watermark};
 
       croak "Cannot set read_low_watermark without read_high_watermark" if defined $low and !defined $high;
       croak "Cannot set read_high_watermark without read_low_watermark" if defined $high and !defined $low;
@@ -875,8 +877,11 @@ sub write
       };
    }
 
+   my $write_len = $params{write_len};
+   defined $write_len or $write_len = $self->{write_len};
+
    push @{ $self->{writequeue} }, Writer(
-      $data, $params{write_len} // $self->{write_len}, $on_write, $on_flush, $on_error, 0
+      $data, $write_len, $on_write, $on_flush, $on_error, 0
    );
 
    keys %params and croak "Unrecognised keys for ->write - " . join( ", ", keys %params );

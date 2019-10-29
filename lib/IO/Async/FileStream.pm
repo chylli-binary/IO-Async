@@ -1,14 +1,14 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2011-2012 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2011-2015 -- leonerd@leonerd.org.uk
 
 package IO::Async::FileStream;
 
 use strict;
 use warnings;
 
-our $VERSION = '0.69';
+our $VERSION = '0.70';
 
 use base qw( IO::Async::Stream );
 
@@ -164,7 +164,9 @@ sub configure
       $params{read_handle} = $self->{file}->handle;
    }
    elsif( exists $params{handle} or exists $params{read_handle} ) {
-      my $handle = delete $params{handle} // delete $params{read_handle};
+      my $handle = delete $params{handle};
+      defined $handle or $handle = delete $params{read_handle};
+
       $self->{file}->configure( handle => $handle );
       $params{read_handle} = $self->{file}->handle;
    }

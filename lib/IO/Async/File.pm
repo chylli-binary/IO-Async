@@ -1,15 +1,14 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2012 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2012-2015 -- leonerd@leonerd.org.uk
 
 package IO::Async::File;
 
-use 5.010; # //
 use strict;
 use warnings;
 
-our $VERSION = '0.69';
+our $VERSION = '0.70';
 
 use base qw( IO::Async::Timer::Periodic );
 
@@ -172,7 +171,7 @@ sub on_tick
    my $self = shift;
 
    my $old = $self->{last_stat};
-   my $new = stat( $self->{filename} // $self->{handle} );
+   my $new = stat( defined $self->{filename} ? $self->{filename} : $self->{handle} );
 
    my $any_changed;
    foreach my $stat ( @STATS ) {

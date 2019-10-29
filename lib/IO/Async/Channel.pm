@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use base qw( IO::Async::Notifier );
 
-our $VERSION = '0.69';
+our $VERSION = '0.70';
 
 use Carp;
 
@@ -127,7 +127,7 @@ sub _init
    my $self = shift;
    my ( $params ) = @_;
 
-   $params->{codec} //= "Storable";
+   defined $params->{codec} or $params->{codec} = "Storable";
 
    $self->SUPER::_init( $params );
 }

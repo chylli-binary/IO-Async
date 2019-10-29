@@ -17,11 +17,7 @@ my $build = Module::Build->new(
       'Time::HiRes' => 0,
 
       # Fails on perl 5.8.3 for unknown reasons
-      #   https://rt.cpan.org/Ticket/Display.html?id=64493
-      # Now 5.16 is stable, I see even less reason to worry about such an old Perl
-
-      # Furthermore we've started using 5.10'isms
-      'perl' => '5.010',
+      'perl' => '5.008004',
    },
    recommends => {
       'IO::Socket::IP' => 0,

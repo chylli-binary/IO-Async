@@ -1,5 +1,10 @@
 Revision history for IO-Async
 
+0.70    2015/12/15 18:17:43
+        [CHANGES]
+         * Support perl 5.8.x (tested on 5.8.9, presumed working as far as
+           5.8.4)
+
 0.69    2015/11/09 19:56:58
         [CHANGES]
          * Use Future->catch instead of poorly-implemented string-eq test

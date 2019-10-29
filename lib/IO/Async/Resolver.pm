@@ -7,10 +7,9 @@ package IO::Async::Resolver;
 
 use strict;
 use warnings;
-use 5.010;
 use base qw( IO::Async::Function );
 
-our $VERSION = '0.69';
+our $VERSION = '0.70';
 
 # Socket 2.006 fails to getaddrinfo() AI_NUMERICHOST properly on MSWin32
 use Socket 2.007 qw(
@@ -324,7 +323,7 @@ sub getaddrinfo
       croak "Expected 'on_error' or to return a Future";
 
    my $host    = $args{host}    || "";
-   my $service = $args{service} // "";
+   my $service = $args{service}; defined $service or $service = "";
    my $flags   = $args{flags}   || 0;
 
    $flags |= AI_PASSIVE if $args{passive};

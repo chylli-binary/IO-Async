@@ -8,7 +8,7 @@ package IO::Async::Loop::Poll;
 use strict;
 use warnings;
 
-our $VERSION = '0.69';
+our $VERSION = '0.70';
 use constant API_VERSION => '0.49';
 
 use base qw( IO::Async::Loop );
@@ -251,17 +251,26 @@ sub loop_once
       return $self->post_poll;
    }
    else {
-      my $msec = defined $timeout ? $timeout * 1000 : -1;
       my @pollmasks = %{ $self->{pollmask} };
 
-      my $pollret = IO::Poll::_poll( $msec, @pollmasks );
-      if( $pollret == -1 and $! == EINTR or
-          $pollret == 0 and $self->{sigproxy} ) {
-         local $!;
+      # Perl 5.8.x's IO::Poll::_poll gets confused with no masks
+      my $pollret;
+      if( @pollmasks ) {
+         my $msec = defined $timeout ? $timeout * 1000 : -1;
+         $pollret = IO::Poll::_poll( $msec, @pollmasks );
+         if( $pollret == -1 and $! == EINTR or
+             $pollret == 0 and $self->{sigproxy} ) {
+            local $!;
 
-         @pollmasks = %{ $self->{pollmask} };
-         my $secondattempt = IO::Poll::_poll( $msec, @pollmasks );
-         $pollret = $secondattempt if $secondattempt > 0;
+            @pollmasks = %{ $self->{pollmask} };
+            my $secondattempt = IO::Poll::_poll( $msec, @pollmasks );
+            $pollret = $secondattempt if $secondattempt > 0;
+         }
+
+      }
+      else {
+         # Workaround - we'll use select to fake a millisecond-accurate sleep
+         $pollret = select( undef, undef, undef, $timeout );
       }
 
       return undef unless defined $pollret;

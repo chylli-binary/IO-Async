@@ -8,13 +8,13 @@ package IO::Async::Debug;
 use strict;
 use warnings;
 
-our $VERSION = '0.69';
+our $VERSION = '0.70';
 
 our $DEBUG = $ENV{IO_ASYNC_DEBUG} || 0;
 our $DEBUG_FD   = $ENV{IO_ASYNC_DEBUG_FD};
 our $DEBUG_FILE = $ENV{IO_ASYNC_DEBUG_FILE};
 our $DEBUG_FH;
-our %DEBUG_FLAGS = map { $_ => 1 } split m/,/, $ENV{IO_ASYNC_DEBUG_FLAGS} // "";
+our %DEBUG_FLAGS = map { $_ => 1 } split m/,/, $ENV{IO_ASYNC_DEBUG_FLAGS} || "";
 
 =head1 NAME
 
