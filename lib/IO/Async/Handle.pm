@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use base qw( IO::Async::Notifier );
 
-our $VERSION = '0.67';
+our $VERSION = '0.68';
 
 use Carp;
 
@@ -664,6 +664,11 @@ sub connect
    my %args = @_;
 
    my $loop = $self->loop or croak "Cannot ->connect a Handle that is not in a Loop";
+
+   $self->debug_printf( "CONNECT " . join( ", ",
+      # These args should be stringy
+      ( map { defined $args{$_} ? "$_=$args{$_}" : () } qw( host service family socktype protocol local_host local_service ) )
+   ) );
 
    return $self->loop->connect( %args, handle => $self );
 }

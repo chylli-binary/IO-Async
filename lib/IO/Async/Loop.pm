@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use 5.010;
 
-our $VERSION = '0.67';
+our $VERSION = '0.68';
 
 # When editing this value don't forget to update the docs below
 use constant NEED_API_VERSION => '0.33';

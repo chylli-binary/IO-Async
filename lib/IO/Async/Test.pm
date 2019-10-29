@@ -1,20 +1,21 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2007-2012 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2007-2015 -- leonerd@leonerd.org.uk
 
 package IO::Async::Test;
 
 use strict;
 use warnings;
 
-our $VERSION = '0.67';
+our $VERSION = '0.68';
 
 use Exporter 'import';
 our @EXPORT = qw(
    testing_loop
    wait_for
    wait_for_stream
+   wait_for_future
 );
 
 =head1 NAME
@@ -53,6 +54,8 @@ C<IO::Async::Test> - utility functions for use in test scripts
 
  is( substr( $buffer, 0, 10, "" ), "0123456789", 'Buffer was correct' );
 
+ my $result = wait_for_future( $stream->read_until( "\n" ) )->get;
+
 =head1 DESCRIPTION
 
 This module provides utility functions that may be useful when writing test
@@ -83,7 +86,9 @@ END { undef $loop }
 
 =cut
 
-=head2 testing_loop( $loop )
+=head2 testing_loop
+
+   testing_loop( $loop )
 
 Set the C<IO::Async::Loop> object which the C<wait_for> function will loop
 on.
@@ -95,7 +100,9 @@ sub testing_loop
    $loop = shift;
 }
 
-=head2 wait_for( $condfunc )
+=head2 wait_for
+
+   wait_for { COND }
 
 Repeatedly call the C<loop_once> method on the underlying loop (given to the
 C<testing_loop> function), until the given condition function callback
@@ -128,7 +135,9 @@ sub wait_for(&)
    }
 }
 
-=head2 wait_for_stream( $condfunc, $handle, $buffer )
+=head2 wait_for_stream
+
+   wait_for_stream { COND } $handle, $buffer
 
 As C<wait_for>, but will also watch the given IO handle for readability, and
 whenever it is readable will read bytes in from it into the given buffer. The
@@ -174,6 +183,26 @@ sub wait_for_stream(&$$)
       handle => $handle,
       on_read_ready => 1,
    );
+}
+
+=head2 wait_for_future
+
+   $future = wait_for_future $future
+
+I<Since version 0.68.>
+
+A handy wrapper around using C<wait_for> to wait for a L<Future> to become
+ready. The future instance itself is returned, allowing neater code.
+
+=cut
+
+sub wait_for_future
+{
+   my ( $future ) = @_;
+
+   wait_for { $future->is_ready };
+
+   return $future;
 }
 
 =head1 AUTHOR

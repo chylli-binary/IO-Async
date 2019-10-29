@@ -542,11 +542,9 @@ my @sub_lines;
 
    $wr->syswrite( "lalaLALA" );
 
-   my $f = $stream->read_exactly( 4 )->then( sub {
+   my $f = wait_for_future $stream->read_exactly( 4 )->then( sub {
       $stream->read_exactly( 4 );
    });
-
-   wait_for { $f->is_ready };
 
    is( scalar $f->get, "LALA", 'chained ->read_exactly' );
 
@@ -606,9 +604,8 @@ my @sub_lines;
 
    cmp_ok( $read_errno, "==", ECONNRESET, 'errno after failed read' );
 
-   my $f = $stream->read_atmost( 256 );
+   my $f = wait_for_future $stream->read_atmost( 256 );
 
-   wait_for { $f->is_ready };
    cmp_ok( ( $f->failure )[-1], "==", ECONNRESET, 'failure from ->read_atmost after failed read' );
 
    $loop->remove( $stream );

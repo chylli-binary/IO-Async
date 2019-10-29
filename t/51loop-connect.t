@@ -272,12 +272,10 @@ SKIP: {
    my $failop;
    my $failerr;
 
-   my $future = $loop->connect(
+   my $future = wait_for_future $loop->connect(
       addr => { family => "unix", socktype => "stream", path => "/some/path/we/know/breaks" },
       on_fail => sub { $failop = shift @_; $failerr = pop @_; },
    );
-
-   wait_for { $future->is_ready };
 
    is( $failop, "connect", '$failop is connect' );
    is( $failerr+0, ENOENT, '$failerr is ENOENT' );

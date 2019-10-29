@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use base qw( IO::Async::Notifier );
 
-our $VERSION = '0.67';
+our $VERSION = '0.68';
 
 use Carp;
 
@@ -51,14 +51,21 @@ The following named parameters may be passed to C<new> or C<configure>:
 Gives the name of the encoding method used to represent values over the
 channel.
 
-By default this will be C<Storable>, to use the core L<Storable> module. As
-this only supports references, to pass a single scalar value, C<send> a SCALAR
+This can be set to C<Storable> to use the core L<Storable> module. As this
+only supports references, to pass a single scalar value, C<send> a SCALAR
 reference to it, and dereference the result of C<recv>.
 
 If the L<Sereal::Encoder> and L<Sereal::Decoder> modules are installed, this
 can be set to C<Sereal> instead, and will use those to perform the encoding
 and decoding. This optional dependency may give higher performance than using
 C<Storable>.
+
+Currently, the default choice is always C<Storable>. However, a later version
+may switch to using C<Sereal> if the appropriate modules are available. Most
+users of this module should not need to worry about the default. It may matter
+if the C<send_frozen> method is being used to send pre-encoded data. Code that
+tries to do this should be changed to use the C<encode> method and
+C<send_encoded> instead.
 
 =cut
 
@@ -136,8 +143,9 @@ sub configure
    }
 
    if( my $codec = delete $params{codec} ) {
-      ( $self->can( "_make_codec_$codec" ) or croak "Unrecognised codec name '$codec'" )
-         ->( $self );
+      @{ $self }{qw( encode decode )} = (
+         $self->can( "_make_codec_$codec" ) or croak "Unrecognised codec name '$codec'"
+      )->();
    }
 
    $self->SUPER::configure( %params );
@@ -145,26 +153,27 @@ sub configure
 
 sub _make_codec_Storable
 {
-   my $self = shift;
-
    require Storable;
 
-   $self->{encode} = \&Storable::freeze;
-   $self->{decode} = \&Storable::thaw;
+   return
+      \&Storable::freeze,
+      \&Storable::thaw;
 }
 
 sub _make_codec_Sereal
 {
-   my $self = shift;
-
    require Sereal::Encoder;
    require Sereal::Decoder;
 
-   my $encoder = Sereal::Encoder->new;
-   $self->{encode} = sub { $encoder->encode( $_[0] ) };
+   my $encoder;
+   my $decoder;
 
-   my $decoder = Sereal::Decoder->new;
-   $self->{decode} = sub { $decoder->decode( $_[0] ) };
+   # "thread safety" to Sereal::{Encoder,Decoder} means that the variables get
+   # reset to undef in new threads. We should defend against that.
+
+   return
+      sub { ( $encoder ||= Sereal::Encoder->new )->encode( $_[0] ) },
+      sub { ( $decoder ||= Sereal::Decoder->new )->decode( $_[0] ) };
 }
 
 =head2 $channel->send( $data )
@@ -182,17 +191,17 @@ sub send
    my $self = shift;
    my ( $data ) = @_;
 
-   $self->send_frozen( $self->{encode}->( $data ) );
+   $self->send_encoded( $self->{encode}->( $data ) );
 }
 
-=head2 $channel->send_frozen( $record )
+=head2 $channel->send_encoded( $record )
 
 A variant of the C<send> method; this method pushes the byte record given.
-This should be the result of a call to C<Storable::freeze()>.
+This should be the result of a call to C<encode>.
 
 =cut
 
-sub send_frozen
+sub send_encoded
 {
    my $self = shift;
    my ( $record ) = @_;
@@ -204,6 +213,47 @@ sub send_frozen
    return $self->_send_sync( $bytes )  if $self->{mode} eq "sync";
    return $self->_send_async( $bytes ) if $self->{mode} eq "async";
 }
+
+=head2 $record = $channel->encode( $data )
+
+Takes a Perl reference and returns a serialised string that can be passed to
+C<send_encoded>. The following two forms are equivalent
+
+ $channel->send( $data )
+ $channel->send_encoded( $channel->encode( $data ) )
+
+This is provided for the use-case where data needs to be serialised into a
+fixed string to "snapshot it" but not sent yet; the returned string can be
+saved and sent at a later time.
+
+=head2 $record = IO::Async::Channel->encode( $data )
+
+This can also be used as a class method, in case it is inconvenient to operate
+on a particular object instance, or when one does not exist yet. In this case
+it will encode using whatever is the default codec for C<IO::Async::Channel>.
+
+=cut
+
+sub encode
+{
+   my $self = shift;
+   my ( $data ) = @_;
+
+   return ref $self ?
+      $self->{encode}->( $data ) :
+      do { require Storable; Storable::freeze( $data ) };
+}
+
+=head2 $channel->send_frozen( $record )
+
+Legacy name for C<send_encoded>. This is no longer preferred as it expects
+the data to be encoded using C<Storable>, which prevents (or at least makes
+more awkward) the use of other codecs on a channel by default. This method
+should not be used in new code and may be removed in a later version.
+
+=cut
+
+*send_frozen = \&send_encoded;
 
 =head2 $data = $channel->recv
 

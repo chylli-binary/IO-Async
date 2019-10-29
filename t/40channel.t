@@ -13,7 +13,6 @@ use IO::Async::Channel;
 use IO::Async::OS;
 
 use IO::Async::Loop;
-use Storable qw( freeze );
 
 my $loop = IO::Async::Loop->new_builtin;
 
@@ -33,9 +32,13 @@ testing_loop( $loop );
 
    is_deeply( $channel_rd->recv, [ structure => "here" ], 'Sync mode channels can send/recv structures' );
 
-   $channel_wr->send_frozen( freeze [ prefrozen => "data" ] );
+   $channel_wr->send_encoded( $channel_wr->encode( [ prefrozen => "data" ] ) );
 
-   is_deeply( $channel_rd->recv, [ prefrozen => "data" ], 'Sync mode channels can send_frozen' );
+   is_deeply( $channel_rd->recv, [ prefrozen => "data" ], 'Sync mode channels can send_encoded' );
+
+   $channel_wr->send_encoded( IO::Async::Channel->encode( [ prefrozen => "again" ] ) );
+
+   is_deeply( $channel_rd->recv, [ prefrozen => "again" ], 'Channel->encode works as a class method' );
 
    $channel_wr->close;
 
@@ -119,17 +122,13 @@ testing_loop( $loop );
 
    $channel_wr->send( [ data => "by sync" ] );
 
-   my $recv_f = $channel_rd->recv;
-
-   wait_for { $recv_f->is_ready };
+   my $recv_f = wait_for_future $channel_rd->recv;
 
    is_deeply( scalar $recv_f->get, [ data => "by sync" ], 'Async mode future can receive data' );
 
    $channel_wr->close;
 
-   my $eof_f = $channel_rd->recv;
-
-   wait_for { $eof_f->is_ready };
+   my $eof_f = wait_for_future $channel_rd->recv;
 
    is( ( $eof_f->failure )[1], "eof", 'Async mode future can receive EOF' );
 }
@@ -233,7 +232,7 @@ testing_loop( $loop );
 
 # Sereal encoder
 SKIP: {
-   skip "Sereal is not available", 1 unless eval { require Sereal::Encoder; require Sereal::Decoder; };
+   skip "Sereal is not available", 1 unless IO::Async::OS->HAVE_SEREAL;
 
    my ( $pipe_rd, $pipe_wr ) = IO::Async::OS->pipepair;
 
@@ -251,9 +250,7 @@ SKIP: {
 
    $channel_wr->send( [ data => "by sync" ] );
 
-   my $recv_f = $channel_rd->recv;
-
-   wait_for { $recv_f->is_ready };
+   my $recv_f = wait_for_future $channel_rd->recv;
 
    is_deeply( scalar $recv_f->get, [ data => "by sync" ], 'Channel can use Sereal as codec' );
 

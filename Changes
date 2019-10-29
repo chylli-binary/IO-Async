@@ -1,5 +1,22 @@
 Revision history for IO-Async
 
+0.68    2015/07/31 20:07:48
+        [CHANGES]
+         * Allow IO::Async::Function body to 'die' with an ARRAYref to set
+           more details on failed Future
+         * Have IO::Async::Resolver calls indicate the failed resolver name
+         * Have IO::Async::Resolver's getaddrinfo and getnameinfo resolvers
+           give error numbers in failure result
+         * Added 'init_code' parameter to IO::Async::Function (RT104127)
+         * Added IO::Async::Channel->encode, ->send_encoded; deprecate the old
+           ->send_frozen method
+         * Added IO::Async::Test::wait_for_future
+        
+        [BUGFIXES]
+         * Clean up after 'on_hangup' loop tests (RT106061)
+         * Make ->stop + ->start on IO::Async::Timer::Periodic not forget the
+           first_interval (RT100927)
+
 0.67    2015/06/01 15:06:13
         [CHANGES]
          * Add a ->post_fork method to IO::Async::Loop in case subclasses

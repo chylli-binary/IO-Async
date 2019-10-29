@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use base qw( IO::Async::Handle );
 
-our $VERSION = '0.67';
+our $VERSION = '0.68';
 
 use IO::Async::Handle;
 use IO::Async::OS;
@@ -103,9 +103,10 @@ having the new socket already configured onto it.
 
 =head2 on_stream $stream
 
-An alternative to C<on_accept>, this an instance of L<IO::Async::Stream> when
-a new client connects. This is provided as a convenience for the common case
-that a Stream object is required as the transport for a Protocol object.
+An alternative to C<on_accept>, this is passed an instance of
+L<IO::Async::Stream> when a new client connects. This is provided as a
+convenience for the common case that a Stream object is required as the
+transport for a Protocol object.
 
 This is now vaguely deprecated in favour of using C<on_accept> with a handle
 constructor or class.

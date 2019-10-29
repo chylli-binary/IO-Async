@@ -27,7 +27,7 @@ use POSIX qw( SIGTERM );
 use Socket qw( sockaddr_family AF_UNIX );
 use Time::HiRes qw( time );
 
-our $VERSION = '0.67';
+our $VERSION = '0.68';
 
 # Abstract Units of Time
 use constant AUT => $ENV{TEST_QUICK_TIMERS} ? 0.1 : 1;
@@ -293,6 +293,11 @@ sub run_tests_io
          $loop->loop_once( 0.1 );
 
          is( $hangup, 1, '$hangup after socket close' );
+
+         $loop->unwatch_io(
+            handle => $S1,
+            on_hangup => 1,
+         );
       }
 
       my ( $Prd, $Pwr ) = IO::Async::OS->pipepair or die "Cannot pipepair - $!";
@@ -309,6 +314,11 @@ sub run_tests_io
       $loop->loop_once( 0.1 );
 
       is( $hangup, 1, '$hangup after pipe close for writing' );
+
+      $loop->unwatch_io(
+         handle => $Pwr,
+         on_hangup => 1,
+      );
    }
 
    # Check that combined read/write handlers can cancel each other

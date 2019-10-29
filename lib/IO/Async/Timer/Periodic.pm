@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use base qw( IO::Async::Timer );
 
-our $VERSION = '0.67';
+our $VERSION = '0.68';
 
 use Carp;
 
@@ -166,42 +166,51 @@ sub configure
    $self->SUPER::configure( %params );
 }
 
-sub _next_interval
+sub _reschedule
 {
    my $self = shift;
-   return $self->{first_interval} if defined $self->{first_interval};
-   return $self->{interval};
+
+   my $now = $self->loop->time;
+   my $resched = $self->{reschedule};
+
+   my $next_interval = $self->{is_first} && defined $self->{first_interval}
+      ? $self->{first_interval} : $self->{interval};
+   delete $self->{is_first};
+
+   if( !defined $self->{next_time} ) {
+      $self->{next_time} = $now + $next_interval;
+   }
+   elsif( $resched eq "hard" ) {
+      $self->{next_time} += $next_interval;
+   }
+   elsif( $resched eq "skip" ) {
+      # How many ticks are needed?
+      my $ticks = POSIX::ceil( $now - $self->{next_time} );
+      # $self->{last_ticks} = $ticks;
+      $self->{next_time} += $next_interval * $ticks;
+   }
+   elsif( $resched eq "drift" ) {
+      $self->{next_time} = $now + $next_interval;
+   }
+
+   $self->SUPER::start;
 }
 
 sub start
 {
    my $self = shift;
 
+   $self->{is_first} = 1;
+
    # Only actually define a time if we've got a loop; otherwise it'll just
    # become start-pending. We'll calculate it properly when it gets added to
    # the Loop
-   if( my $loop = $self->loop ) {
-      my $now = $loop->time;
-      my $resched = $self->{reschedule};
-
-      if( !defined $self->{next_time} ) {
-         $self->{next_time} = $now + $self->_next_interval;
-      }
-      elsif( $resched eq "hard" ) {
-         $self->{next_time} += $self->_next_interval;
-      }
-      elsif( $resched eq "skip" ) {
-         # How many ticks are needed?
-         my $ticks = POSIX::ceil( $now - $self->{next_time} );
-         # $self->{last_ticks} = $ticks;
-         $self->{next_time} += $self->_next_interval * $ticks;
-      }
-      elsif( $resched eq "drift" ) {
-         $self->{next_time} = $now + $self->_next_interval;
-      }
+   if( $self->loop ) {
+      $self->_reschedule;
    }
-
-   $self->SUPER::start;
+   else {
+      $self->SUPER::start;
+   }
 }
 
 sub stop
@@ -219,15 +228,13 @@ sub _make_cb
    return $self->_capture_weakself( sub {
       my $self = shift or return;
 
-      undef $self->{first_interval};
-
       undef $self->{id};
 
       my $ok = eval { $self->invoke_event( on_tick => ); 1 } or
          my $e = $@;
 
       # detect ->stop
-      $self->start if defined $self->{next_time};
+      $self->_reschedule if defined $self->{next_time};
 
       die $e if !$ok;
    } );

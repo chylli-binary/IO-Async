@@ -53,9 +53,7 @@ sub test_with_model
 
       $calls->send( [ 1, 2, 3 ] );
 
-      my $f = $returns->recv;
-
-      wait_for { $f->is_ready };
+      my $f = wait_for_future $returns->recv;
 
       my $result = $f->get;
       is( ${$result}, 6, "Result for $model model" );
@@ -133,17 +131,13 @@ sub test_with_model
       $loop->add( $routine );
 
       my $f;
-      $f = $channel->recv;
-
-      wait_for { $f->is_ready };
+      $f = wait_for_future $channel->recv;
 
       is( ${ $f->get }, "READY", 'Routine is ready for SIGINT' );
 
       $routine->kill( "INT" );
 
-      $f = $channel->recv;
-
-      wait_for { $f->is_ready };
+      $f = wait_for_future $channel->recv;
 
       is( ${ $f->get }, "SIGINT", 'Routine caught SIGINT' );
    }
@@ -189,16 +183,13 @@ foreach my $model (qw( fork thread )) {
 
    $in1->send( \"+" );
 
-   my $status_f = $out1->recv;
+   my $status_f = wait_for_future $out1->recv;
 
-   wait_for { $status_f->is_ready };
    is( ${ $status_f->get }, "Ready +", '$status_f result midway through Routine' );
 
    $in2->send( [ 10, 20 ] );
 
-   my $result_f = $out2->recv;
-
-   wait_for { $result_f->is_ready };
+   my $result_f = wait_for_future $out2->recv;
 
    is( ${ $result_f->get }, 30, '$result_f result at end of Routine' );
 
@@ -264,9 +255,7 @@ SKIP: {
 
    $loop->add( $routine );
 
-   my $f = $channel->recv;
-
-   wait_for { $f->is_ready };
+   my $f = wait_for_future $channel->recv;
 
    my $result = $f->get;
    is( $result->[0], "Here is a random string", '$result from Routine with modified ENV' );

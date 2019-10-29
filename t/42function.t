@@ -182,6 +182,25 @@ testing_loop( $loop );
    $loop->remove( $function );
 }
 
+# Throwing exceptions with details
+{
+   my $function = IO::Async::Function->new(
+      code => sub { die [ "A message\n", category => 123, 456 ] },
+   );
+
+   $loop->add( $function );
+
+   my $f = wait_for_future $function->call(
+      args => [],
+   );
+
+   is_deeply( [ $f->failure ],
+              [ "A message\n", category => 123, 456 ],
+              '$f->failure after exception with detail' );
+
+   $loop->remove( $function );
+}
+
 # max_workers
 {
    my $count = 0;
@@ -288,6 +307,25 @@ SKIP: {
    wait_for { defined $err };
 
    is( $err, "return", '$err is "return" after child nondeath' );
+
+   $loop->remove( $function );
+}
+
+# init_code
+{
+   my $captured;
+   my $function = IO::Async::Function->new(
+      init_code => sub { $captured = 10 },
+      code => sub { return $captured },
+   );
+
+   $loop->add( $function );
+
+   my $f = wait_for_future $function->call(
+      args => [],
+   );
+
+   is( scalar $f->get, 10, 'init_code can side-effect captured variables' );
 
    $loop->remove( $function );
 }

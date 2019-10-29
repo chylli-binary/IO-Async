@@ -9,7 +9,7 @@ use Test::More;
 
 use Socket 1.93 qw( 
    AF_INET SOCK_STREAM INADDR_LOOPBACK AI_PASSIVE
-   pack_sockaddr_in getaddrinfo getnameinfo
+   pack_sockaddr_in inet_aton getaddrinfo getnameinfo
 );
 
 use IO::Async::Loop;
@@ -227,6 +227,8 @@ my ( $localhost_err, @localhost_addrs ) = getaddrinfo( "localhost", "www", { fam
 
    if( $localhost_err ) {
       is( scalar $future->failure, "$localhost_err\n", '$resolver->getaddrinfo - error message' );
+      is( ( $future->failure )[1], "resolve", '->failure [1]' );
+      is( ( $future->failure )[2], "getaddrinfo", '->failure [2]' );
    }
    else {
       my @got = $future->get;
@@ -300,6 +302,27 @@ my ( $localhost_err, @localhost_addrs ) = getaddrinfo( "localhost", "www", { fam
    is_deeply( \@got, \@lo_addrs, '$resolver->getaddrinfo resolved addresses synchronously' );
 }
 
+# Now something I hope doesn't exist - we put it in a known-missing TLD
+my $missinghost = "TbK4jM2M0OS.lm57DWIyu4i";
+
+# Some CPAN testing machines seem to have wildcard DNS servers that reply to
+# any request. We'd better check for them
+
+SKIP: {
+    skip "Resolver has an answer for $missinghost", 1 if gethostbyname( $missinghost );
+
+    my $future = wait_for_future $resolver->getaddrinfo(
+       host     => $missinghost,
+       service  => "80",
+       socktype => SOCK_STREAM,
+    );
+
+    ok( $future->failure, '$future failed for missing host' );
+    is( ( $future->failure )[1], "resolve", '->failure [1] gives resolve' );
+    is( ( $future->failure )[2], "getaddrinfo", '->failure [2] gives getaddrinfo' );
+    is( ( $future->failure )[3], Socket::EAI_NONAME, '->failure [3] gives EAI_NONAME' );
+}
+
 my $testaddr = pack_sockaddr_in( 80, INADDR_LOOPBACK );
 my ( $testerr, $testhost, $testserv ) = getnameinfo( $testaddr );
 
@@ -325,14 +348,14 @@ my ( $testerr, $testhost, $testserv ) = getnameinfo( $testaddr );
 }
 
 {
-   my $future = $resolver->getnameinfo(
+   my $future = wait_for_future $resolver->getnameinfo(
       addr => $testaddr,
    );
 
-   wait_for { $future->is_ready };
-
    if( $testerr ) {
       is( scalar $future->failure, "$testerr\n", '$resolver->getnameinfo - error message from future' );
+      is( ( $future->failure )[1], "resolve", '->failure [1]' );
+      is( ( $future->failure )[2], "getnameinfo", '->failure [2]' );
    }
    else {
       my @got = $future->get;

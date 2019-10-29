@@ -8,14 +8,12 @@ package IO::Async::Function;
 use strict;
 use warnings;
 
-our $VERSION = '0.67';
+our $VERSION = '0.68';
 
 use base qw( IO::Async::Notifier );
 use IO::Async::Timer::Countdown;
 
 use Carp;
-
-use Storable qw( freeze );
 
 =head1 NAME
 
@@ -106,6 +104,16 @@ The following named parameters may be passed to C<new> or C<configure>:
 =head2 code => CODE
 
 The body of the function to execute.
+
+ @result = $code->( @args )
+
+=head2 init_code => CODE
+
+Optional. If defined, this is invoked exactly once in every child process or
+thread, after it is created, but before the first invocation of the function
+body itself.
+
+ $init_code->()
 
 =head2 model => "fork" | "thread"
 
@@ -215,7 +223,7 @@ sub configure
 
    my $need_restart;
 
-   foreach (qw( code setup )) {
+   foreach (qw( init_code code setup )) {
       $need_restart++, $self->{$_} = delete $params{$_} if exists $params{$_};
    }
 
@@ -315,6 +323,18 @@ A reference to the array of arguments to pass to the code.
 
 =back
 
+If the function body returns normally the list of results are provided as the
+(successful) result of returned future. If the function throws an exception
+this results in a failed future. In the special case that the exception is in
+fact an unblessed C<ARRAY> reference, this array is unpacked and used as-is
+for the C<fail> result. If the exception is not such a reference, it is used
+as the first argument to C<fail>, in the category of C<error>.
+
+   $f->done( @result )
+
+   $f->fail( @{ $exception } )
+   $f->fail( $exception, error => )
+
 =head2 $function->call( %params )
 
 When not returning a future, the C<on_result>, C<on_return> and C<on_error>
@@ -393,7 +413,7 @@ sub call
       croak "Expected either 'on_result' or 'on_return' and 'on_error' keys, or to return a Future";
    }
 
-   my $request = freeze( $args );
+   my $request = IO::Async::Channel->encode( $args );
 
    my $future;
    if( my $worker = $self->_get_worker ) {
@@ -467,7 +487,7 @@ sub _new_worker
    my $self = shift;
 
    my $worker = IO::Async::Function::Worker->new(
-      ( map { $_ => $self->{$_} } qw( model code setup exit_on_die ) ),
+      ( map { $_ => $self->{$_} } qw( model init_code code setup exit_on_die ) ),
       max_calls => $self->{max_worker_calls},
 
       on_finish => $self->_capture_weakself( sub {
@@ -550,14 +570,21 @@ sub new
    my $arg_channel = IO::Async::Channel->new;
    my $ret_channel = IO::Async::Channel->new;
 
+   my $init = delete $params{init_code};
    my $code = delete $params{code};
    $params{code} = sub {
+      $init->() if defined $init;
+
       while( my $args = $arg_channel->recv ) {
          my @ret;
          my $ok = eval { @ret = $code->( @$args ); 1 };
 
          if( $ok ) {
             $ret_channel->send( [ r => @ret ] );
+         }
+         elsif( ref $@ ) {
+            # Presume that $@ is an ARRAYref of error results
+            $ret_channel->send( [ e => @{ $@ } ] );
          }
          else {
             chomp( my $e = "$@" );
@@ -610,7 +637,7 @@ sub call
    my $worker = shift;
    my ( $args ) = @_;
 
-   $worker->{arg_channel}->send_frozen( $args );
+   $worker->{arg_channel}->send_encoded( $args );
 
    $worker->{busy} = 1;
    $worker->{max_calls}--;
@@ -652,6 +679,23 @@ sub call
       $function->remove_child( $worker ) if $function and $worker->{remove_on_idle};
    }));
 }
+
+=head1 EXAMPLES
+
+=head2 Extended Error Information on Failure
+
+The array-unpacking form of exception indiciation allows the function body to
+more precicely control the resulting failure from the C<call> future.
+
+ my $divider = IO::Async::Function->new(
+    code => sub {
+       my ( $numerator, $divisor ) = @_;
+       $divisor == 0 and
+          die [ "Cannot divide by zero", div_zero => $numerator, $divisor ];
+
+       return $numerator / $divisor;
+    }
+ );
 
 =head1 NOTES
 

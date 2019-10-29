@@ -10,7 +10,7 @@ use warnings;
 use 5.010;
 use base qw( IO::Async::Function );
 
-our $VERSION = '0.67';
+our $VERSION = '0.68';
 
 # Socket 2.006 fails to getaddrinfo() AI_NUMERICHOST properly on MSWin32
 use Socket 2.007 qw(
@@ -146,6 +146,12 @@ with a timeout exception. If not supplied, a default of 10 seconds will apply.
 
 =back
 
+On failure, the fail category name is C<resolve>; the details give the
+individual resolver function name (e.g. C<getaddrinfo>), followed by other
+error details specific to the resolver in question.
+
+ ->fail( $message, resolve => $type => @details )
+
 =head2 $resolver->resolve( %params )
 
 When not returning a future, additional parameters can be given containing the
@@ -177,8 +183,8 @@ sub resolve
    my $type = $args{type};
    defined $type or croak "Expected 'type'";
 
-   if( $type eq "getaddrinfo" ) {
-      $type = "getaddrinfo_hash";
+   if( $type eq "getaddrinfo_hash" ) {
+      $type = "getaddrinfo";
    }
 
    exists $METHODS{$type} or croak "Expected 'type' to be an existing resolver method, got '$type'";
@@ -203,7 +209,10 @@ sub resolve
 
    my $future = $self->call(
       args => [ $type, $timeout, @{$args{data}} ],
-   );
+   )->else( sub {
+      my ( $message, @detail ) = @_;
+      Future->fail( $message, resolve => $type => @detail );
+   });
 
    $future->on_done( $on_resolved ) if $on_resolved;
    $future->on_fail( $on_error    ) if $on_error;
@@ -257,6 +266,11 @@ On success, the future will yield the result as a list of HASH references;
 each containing one result. Each result will contain fields called C<family>,
 C<socktype>, C<protocol> and C<addr>. If requested by C<AI_CANONNAME> then the
 C<canonname> field will also be present.
+
+On failure, the detail field will give the error number, which should match
+one of the C<Socket::EAI_*> constants.
+
+ ->fail( $message, resolve => getaddrinfo => $eai_errno )
 
 As a specific optimisation, this method will try to perform a lookup of
 numeric values synchronously, rather than asynchronously, if it looks likely
@@ -343,7 +357,7 @@ sub getaddrinfo
    }
 
    my $future = $self->resolve(
-      type    => "getaddrinfo_hash",
+      type    => "getaddrinfo",
       data    => [
          host    => $host,
          service => $service,
@@ -351,10 +365,7 @@ sub getaddrinfo
          map { exists $args{$_} ? ( $_ => $args{$_} ) : () } qw( family socktype protocol ),
       ],
       timeout => $args{timeout},
-   )->else( sub {
-      my $message = shift;
-      Future->fail( $message, resolve => getaddrinfo => @_ );
-   });
+   );
 
    $future->on_done( $args{on_resolved} ) if $args{on_resolved};
    $future->on_fail( $args{on_error}    ) if $args{on_error};
@@ -399,6 +410,11 @@ If true, sets both C<NI_NUMERICHOST> and C<NI_NUMERICSERV> flags.
 Time in seconds after which to abort the lookup with a C<Timed out> exception
 
 =back
+
+On failure, the detail field will give the error number, which should match
+one of the C<Socket::EAI_*> constants.
+
+ ->fail( $message, resolve => getnameinfo => $eai_errno )
 
 As a specific optimisation, this method will try to perform a lookup of
 numeric values synchronously, rather than asynchronously, if both the
@@ -468,10 +484,7 @@ sub getnameinfo
       timeout => $args{timeout},
    )->transform(
       done => sub { @{ $_[0] } }, # unpack the ARRAY ref
-   )->else( sub {
-      my $message = shift;
-      Future->fail( $message, resolve => getnameinfo => @_ );
-   });
+   );
 
    $future->on_done( $args{on_resolved} ) if $args{on_resolved};
    $future->on_fail( $args{on_error}    ) if $args{on_error};
@@ -562,12 +575,12 @@ register_resolver getprotobynumber => sub { my @r = getprotobynumber( $_[0] ) or
 
 The following three resolver names are implemented using the L<Socket> module.
 
- getaddrinfo_hash
+ getaddrinfo
  getaddrinfo_array
  getnameinfo
 
-The C<getaddrinfo_hash> resolver takes arguments in a hash of name/value pairs
-and returns a list of hash structures, as the C<Socket::getaddrinfo> function
+The C<getaddrinfo> resolver takes arguments in a hash of name/value pairs and
+returns a list of hash structures, as the C<Socket::getaddrinfo> function
 does. For neatness it takes all its arguments as named values; taking the host
 and service names from arguments called C<host> and C<service> respectively;
 all the remaining arguments are passed into the hints hash. This name is also
@@ -592,7 +605,7 @@ programs to be fully IPv6-capable.
 
 =cut
 
-register_resolver getaddrinfo_hash => sub {
+register_resolver getaddrinfo => sub {
    my %args = @_;
 
    my $host    = delete $args{host};
@@ -606,7 +619,7 @@ register_resolver getaddrinfo_hash => sub {
 
    my ( $err, @addrs ) = Socket::getaddrinfo( $host, $service, \%args );
 
-   die "$err\n" if $err;
+   die [ "$err", $err+0 ] if $err;
 
    return @addrs;
 };
@@ -625,7 +638,7 @@ register_resolver getaddrinfo_array => sub {
 
    my ( $err, @addrs ) = Socket::getaddrinfo( $host, $service, \%hints );
 
-   die "$err\n" if $err;
+   die [ "$err", $err+0 ] if $err;
 
    # Convert the @addrs list into a list of ARRAY refs of 5 values each
    return map {
@@ -638,7 +651,7 @@ register_resolver getnameinfo => sub {
 
    my ( $err, $host, $service ) = Socket::getnameinfo( $addr, $flags || 0 );
 
-   die "$err\n" if $err;
+   die [ "$err", $err+0 ] if $err;
 
    return [ $host, $service ];
 };
@@ -669,16 +682,6 @@ C<IO::Async::Resolver> itself.
     }
     die "Bad name $name";
  };
-
-=head1 TODO
-
-=over 4
-
-=item *
-
-Look into (system-specific) ways of accessing asynchronous resolvers directly
-
-=back
 
 =head1 AUTHOR
 

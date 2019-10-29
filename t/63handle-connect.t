@@ -63,14 +63,13 @@ my $addr = $listensock->sockname;
 
    $loop->add( $handle );
 
-   my $f = $handle->connect(
+   my $f = wait_for_future $handle->connect(
       family   => "inet",
       socktype => "stream",
       host     => $listensock->sockhost,
       service  => $listensock->sockport,
    );
 
-   wait_for { $f->is_ready };
    $f->is_failed and $f->get;
 
    ok( defined $handle->read_handle, '$handle->read_handle defined after ->connect host/service' );

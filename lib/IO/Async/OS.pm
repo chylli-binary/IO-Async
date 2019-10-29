@@ -8,7 +8,7 @@ package IO::Async::OS;
 use strict;
 use warnings;
 
-our $VERSION = '0.67';
+our $VERSION = '0.68';
 
 our @ISA = qw( IO::Async::OS::_Base );
 
@@ -74,6 +74,9 @@ use constant LOOP_BUILTIN_CLASSES => qw( Poll Select );
 # Should there be any other Loop classes we try before the builtin ones?
 use constant LOOP_PREFER_CLASSES => ();
 
+# Do we have Sereal available?
+use constant HAVE_SEREAL => defined eval { require Sereal::Encoder; require Sereal::Decoder; };
+
 =head1 NAME
 
 C<IO::Async::OS> - operating system abstractions for C<IO::Async>
@@ -134,7 +137,7 @@ sub getfamilybyname
    return AF_INET6() if $name eq "inet6" and defined &AF_INET6;
    return AF_UNIX    if $name eq "unix";
 
-   croak "Unrecognised socktype name '$name'";
+   croak "Unrecognised socket family name '$name'";
 }
 
 =head2 $socktype = IO::Async::OS->getsocktypebyname( $name )
