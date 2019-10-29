@@ -2,7 +2,9 @@
 
 use strict;
 
-use Test::More tests => 83;
+use IO::Async::Test;
+
+use Test::More tests => 101;
 use Test::Exception;
 
 use File::Temp qw( tmpnam );
@@ -12,6 +14,8 @@ use IO::Async::Loop::IO_Poll;
 
 my $loop = IO::Async::Loop::IO_Poll->new();
 $loop->enable_childmanager;
+
+testing_loop( $loop );
 
 dies_ok( sub { $loop->spawn_child( code => sub { 1 }, setup => "hello" ); },
          'Bad setup type fails' );
@@ -38,17 +42,7 @@ sub TEST
       on_exit => sub { ( undef, $exitcode, $dollarbang, $dollarat ) = @_; },
    );
 
-   my $ready = 0;
-
-   while( !defined $exitcode ) {
-      $_ = $loop->loop_once( 10 ); # Give code a generous 10 seconds to exit
-      die "Nothing was ready after 10 second wait; called at $callerfile line $callerline\n" if $_ == 0;
-      $ready += $_;
-   }
-
-   if( exists $attr{ready} ) {
-      cmp_ok( $ready, '>=', $attr{ready}, "\$ready after $name" );
-   }
+   wait_for { defined $exitcode };
 
    if( exists $attr{exitstatus} ) {
       ok( WIFEXITED($exitcode), "WIFEXITED(\$exitcode) after $name" );
@@ -89,7 +83,6 @@ my $ret;
       setup => [ fd1 => [ 'dup', $pipe_w ] ],
       code => sub { print "test"; },
 
-      ready      => 3,
       exitstatus => 1,
       dollarat   => '';
 
@@ -99,11 +92,24 @@ my $ret;
    is( $ret, 4,         '$pipe_r->read() after pipe dup to fd1' );
    is( $buffer, 'test', '$buffer after pipe dup to fd1' );
 
+   my $pipe_w_fileno = fileno $pipe_w;
+
+   TEST "pipe dup to fd1 closes pipe",
+      setup => [ fd1 => [ 'dup', $pipe_w ] ],
+      code => sub {
+         my $f = IO::Handle->new_from_fd( $pipe_w_fileno, "w" );
+         defined $f and return 1;
+         $! == EBADF or return 1;
+         return 0;
+      },
+
+      exitstatus => 0,
+      dollarat   => '';
+
    TEST "pipe dup to stdout shortcut",
       setup => [ stdout => $pipe_w ],
       code => sub { print "test"; },
 
-      ready      => 3,
       exitstatus => 1,
       dollarat   => '';
 
@@ -113,11 +119,50 @@ my $ret;
    is( $ret, 4,         '$pipe_r->read() after pipe dup to stdout shortcut' );
    is( $buffer, 'test', '$buffer after pipe dup to stdout shortcut' );
 
+   TEST "pipe dup to \\*STDOUT IO reference",
+      setup => [ \*STDOUT => $pipe_w ],
+      code => sub { print "test2"; },
+
+      exitstatus => 1,
+      dollarat   => '';
+
+   undef $buffer;
+   $ret = read_timeout( $pipe_r, $buffer, 5, 0.1 );
+
+   is( $ret, 5,          '$pipe_r->read() after pipe dup to \\*STDOUT IO reference' );
+   is( $buffer, 'test2', '$buffer after pipe dup to \\*STDOUT IO reference' );
+
+   TEST "pipe keep open",
+      setup => [ "fd$pipe_w_fileno" => [ 'keep' ] ],
+      code  => sub { $pipe_w->autoflush(1); $pipe_w->print( "test" ) },
+
+      exitstatus => 1,
+      dollarat   => '';
+
+   undef $buffer;
+   $ret = read_timeout( $pipe_r, $buffer, 4, 0.1 );
+
+   is( $ret, 4,         '$pipe_r->read() after keep pipe open' );
+   is( $buffer, 'test', '$buffer after keep pipe open' );
+
+   TEST "pipe keep shortcut",
+      setup => [ "fd$pipe_w_fileno" => 'keep' ],
+      code  => sub { $pipe_w->autoflush(1); $pipe_w->print( "test" ) },
+
+      exitstatus => 1,
+      dollarat   => '';
+
+   undef $buffer;
+   $ret = read_timeout( $pipe_r, $buffer, 4, 0.1 );
+
+   is( $ret, 4,         '$pipe_r->read() after keep pipe open' );
+   is( $buffer, 'test', '$buffer after keep pipe open' );
+
+
    TEST "pipe dup to stdout",
       setup => [ stdout => [ 'dup', $pipe_w ] ],
       code => sub { print "test"; },
 
-      ready      => 3,
       exitstatus => 1,
       dollarat   => '';
 
@@ -131,7 +176,6 @@ my $ret;
       setup => [ fd2 => [ 'dup', $pipe_w ] ],
       code => sub { print STDERR "test"; },
 
-      ready      => 3,
       exitstatus => 1,
       dollarat   => '';
 
@@ -145,7 +189,6 @@ my $ret;
       setup => [ stderr => [ 'dup', $pipe_w ] ],
       code => sub { print STDERR "test"; },
 
-      ready      => 3,
       exitstatus => 1,
       dollarat   => '';
 
@@ -163,7 +206,6 @@ my $ret;
          print "test";
       },
 
-      ready      => 3,
       exitstatus => 1,
       dollarat   => '';
 
@@ -173,10 +215,26 @@ my $ret;
    is( $ret, 4,         '$pipe_r->read() after pipe dup to other FD' );
    is( $buffer, 'test', '$buffer after pipe dup to other FD' );
 
+   TEST "pipe dup to its own FD",
+      setup => [ "fd$pipe_w_fileno" => $pipe_w ],
+      code => sub {
+         close STDOUT;
+         open( STDOUT, ">&=$pipe_w_fileno" ) or die "Cannot open fd$pipe_w_fileno as stdout - $!";
+         print "test";
+      },
+
+      exitstatus => 1,
+      dollarat   => '';
+
+   undef $buffer;
+   $ret = read_timeout( $pipe_r, $buffer, 4, 0.1 );
+
+   is( $ret, 4,         '$pipe_r->read() after pipe dup to its own FD' );
+   is( $buffer, 'test', '$buffer after pipe dup to its own FD' );
+
    TEST "other FD close",
       code => sub { return $pipe_w->syswrite( "test" ); },
 
-      ready      => 3,
       exitstatus => 255,
       dollarbang => EBADF,
       dollarat   => '';
@@ -186,7 +244,6 @@ my $ret;
       code => sub { print "test"; },
       setup => [ map { +"fd$_" => $pipe_w } ( 1 .. 19 ) ],
 
-      ready      => 2,
       exitstatus => 1,
       dollarat   => '';
 
@@ -203,7 +260,6 @@ my $ret;
       setup => [ stdout => $pipe_w, stderr => $pipe2_w ],
       code => sub { print "output"; print STDERR "error"; },
 
-      ready      => 3,
       exitstatus => 1,
       dollarat   => '';
 
@@ -218,13 +274,33 @@ my $ret;
 
    is( $ret, 5,          '$pipe2_r->read() after pipe dup to stdout and stderr' );
    is( $buffer, 'error', '$buffer after pipe dup to stdout and stderr' );
+
+   TEST "pipe dup to stdout and stderr same pipe",
+      setup => [ stdout => $pipe_w, stderr => $pipe_w ],
+      code => sub { print "output"; print STDERR "error"; },
+
+      exitstatus => 1,
+      dollarat   => '';
+
+   undef $buffer;
+   $ret = read_timeout( $pipe_r, $buffer, 11, 0.1 );
+
+   is( $ret, 11,               '$pipe_r->read() after pipe dup to stdout and stderr same pipe' );
+   is( $buffer, 'outputerror', '$buffer after pipe dup to stdout and stderr same pipe' );
 }
 
 TEST "stdout close",
    setup => [ stdout => [ 'close' ] ],
    code => sub { print "test"; },
 
-   ready      => 3,
+   exitstatus => 255,
+   dollarbang => EBADF,
+   dollarat   => '';
+
+TEST "stdout close shortcut",
+   setup => [ stdout => 'close' ],
+   code => sub { print "test"; },
+
    exitstatus => 255,
    dollarbang => EBADF,
    dollarat   => '';
@@ -237,7 +313,6 @@ TEST "stdout close",
       setup => [ stdout => [ 'open', '>', $name ] ],
       code => sub { print "test"; },
 
-      ready      => 3,
       exitstatus => 1,
       dollarat   => '';
 
@@ -255,7 +330,6 @@ TEST "stdout close",
       setup => [ stdout => [ 'open', '>>', $name ] ],
       code => sub { print "value"; },
 
-      ready      => 3,
       exitstatus => 1,
       dollarat   => '';
 
@@ -274,7 +348,6 @@ TEST "environment is preserved",
    setup => [],
    code => sub { return $ENV{TESTKEY} eq "parent value" ? 0 : 1 },
 
-   ready      => 3,
    exitstatus => 0,
    dollarat   => '';
 
@@ -282,6 +355,5 @@ TEST "environment is overwritten",
    setup => [ env => { TESTKEY => "child value" } ],
    code => sub { return $ENV{TESTKEY} eq "child value" ? 0 : 1 },
 
-   ready      => 3,
    exitstatus => 0,
    dollarat   => '';

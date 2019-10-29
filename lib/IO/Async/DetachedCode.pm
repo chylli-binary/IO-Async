@@ -7,7 +7,7 @@ package IO::Async::DetachedCode;
 
 use strict;
 
-our $VERSION = '0.13';
+our $VERSION = '0.14';
 
 use IO::Async::Stream;
 
@@ -23,10 +23,10 @@ C<IO::Async::DetachedCode> - execute code asynchronously in child processes
 
 =head1 SYNOPSIS
 
-Usually this object would be constructed indirectly, via an C<IO::Async::Loop>:
+This object is used indirectly via an C<IO::Async::Loop>:
 
- use IO::Async::Loop::...;
- my $loop = IO::Async::Loop::...
+ use IO::Async::Loop::IO_Poll;
+ my $loop = IO::Async::Loop::IO_Poll->new();
 
  $loop->enable_childmanager;
 
@@ -49,16 +49,6 @@ Usually this object would be constructed indirectly, via an C<IO::Async::Loop>:
  );
 
  $loop->loop_forever;
-
-It can also be used directly. In this case, extra effort must be taken to pass
-an C<IO::Async::Loop> object:
-
- my $loop = IO::Async::Loop::...
-
- my $code = IO::Async::DetachedCode->new(
-    loop => $loop,
-    code => sub { ... },
- );
 
 =head1 DESCRIPTION
 
@@ -106,17 +96,12 @@ no nonblocking or asynchronous version is supplied.
 
 =cut
 
-=head2 $code = IO::Async::DetachedCode->new( %params )
+=head2 $code = $loop->detach_code( %params )
 
 This function returns a new instance of a C<IO::Async::DetachedCode> object.
 The C<%params> hash takes the following keys:
 
 =over 8
-
-=item loop => IO::Async::Loop
-
-A reference to an C<IO::Async::Loop> object. The loop must have the child
-manager enabled.
 
 =item code => CODE
 
@@ -157,6 +142,13 @@ Optional boolean, controls what happens after the C<code> throws an
 exception. If missing or false, the worker will continue running to process
 more requests. If true, the worker will be shut down. A new worker might be
 constructed by the C<call> method to replace it, if necessary.
+
+=item setup => ARRAY
+
+Optional array reference. Specifies the C<setup> key to pass to the underlying
+C<detach_child> when detaching the code block. If not supplied, a default one
+will be created which just closes C<STDIN> and C<STDOUT>; C<STDERR> will be
+left unaffected.
 
 =back
 
@@ -212,6 +204,15 @@ sub new
    # Squash this down to a boolean
    my $exit_on_die =  $params{exit_on_die} ? 1 : 0;
 
+   # Provide a child setup list if one wasn't given
+   my $setup = $params{setup};
+
+   $setup ||= [
+      stdin  => 'close',
+      stdout => 'close',
+      # stderr is kept by default
+   ];
+
    my $self = bless {
       next_id     => 0,
       code        => $code,
@@ -219,6 +220,7 @@ sub new
       streamtype  => $streamtype,
       marshaller  => $marshaller,
       workers     => $workers,
+      setup       => $setup,
       exit_on_die => $exit_on_die,
 
       inners => [],
@@ -265,19 +267,19 @@ sub _detach_child
 
    my $loop = $inner->{loop};
 
-   my $kid = $loop->detach_child(
+   my $kid = $loop->spawn_child(
       code => sub { 
-         foreach( 0 .. IO::Async::ChildManager::OPEN_MAX_FD() ) {
-            next if $_ == 2;
-            next if $_ == fileno $childread;
-            next if $_ == fileno $childwrite;
-
-            POSIX::close( $_ );
-         }
-
          $self->_child_loop( $childread, $childwrite, $inner ),
       },
-      on_exit => sub { _child_error( $inner, 'exit', @_ ) },
+      setup => [
+         @{ $self->{setup} },
+         $childread  => 'keep',
+         $childwrite => 'keep',
+      ],
+      on_exit => sub { 
+         my ( $pid, $exitcode, undef, undef ) = @_;
+         _child_error( $inner, 'exit', $pid, $exitcode );
+      },
    );
 
    $inner->{kid} = $kid;
