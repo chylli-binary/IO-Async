@@ -10,7 +10,7 @@ use warnings;
 use 5.010;
 use base qw( IO::Async::Function );
 
-our $VERSION = '0.66';
+our $VERSION = '0.67';
 
 # Socket 2.006 fails to getaddrinfo() AI_NUMERICHOST properly on MSWin32
 use Socket 2.007 qw(

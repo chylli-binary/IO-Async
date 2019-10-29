@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use 5.010; # //
 
-our $VERSION = '0.66';
+our $VERSION = '0.67';
 
 use base qw( IO::Async::Handle );
 
@@ -835,7 +835,10 @@ sub write
    if( defined wantarray ) {
       my $orig_on_flush = $on_flush;
       my $orig_on_error = $on_error;
-      $f = $self->loop->new_future;
+
+      my $loop = $self->loop or
+         croak "Cannot ->write data returning a Future to a Stream not in a Loop";
+      $f = $loop->new_future;
       $on_flush = sub {
          $f->done;
          $orig_on_flush->( @_ ) if $orig_on_flush;

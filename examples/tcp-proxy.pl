@@ -20,10 +20,7 @@ $loop->add( $listener );
 $listener->listen(
    service  => $LISTEN_PORT,
    socktype => 'stream',
-
-   on_resolve_error => sub { die "Cannot resolve - $_[0]\n"; },
-   on_listen_error  => sub { die "Cannot listen\n"; },
-);
+)->get;
 
 $loop->run;
 

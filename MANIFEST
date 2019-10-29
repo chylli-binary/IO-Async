@@ -23,7 +23,6 @@ lib/IO/Async/Loop.pm
 lib/IO/Async/Loop/Poll.pm
 lib/IO/Async/Loop/Select.pm
 lib/IO/Async/LoopTests.pm
-lib/IO/Async/MergePoint.pm
 lib/IO/Async/Notifier.pm
 lib/IO/Async/OS.pm
 lib/IO/Async/OS/cygwin.pm

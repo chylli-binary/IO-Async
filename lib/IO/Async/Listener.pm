@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use base qw( IO::Async::Handle );
 
-our $VERSION = '0.66';
+our $VERSION = '0.67';
 
 use IO::Async::Handle;
 use IO::Async::OS;
@@ -53,10 +53,7 @@ C<IO::Async::Listener> - listen on network sockets for incoming connections
  $listener->listen(
     service  => "echo",
     socktype => 'stream',
-
-    on_resolve_error => sub { print STDERR "Cannot resolve - $_[0]\n"; },
-    on_listen_error  => sub { print STDERR "Cannot listen\n"; },
- );
+ )->get;
 
  $loop->run;
 
@@ -74,10 +71,7 @@ This object can also be used indirectly via an C<IO::Async::Loop>:
     on_stream => sub {
        ...
     },
-
-    on_resolve_error => sub { print STDERR "Cannot resolve - $_[0]\n"; },
-    on_listen_error  => sub { print STDERR "Cannot listen\n"; },
- );
+ )->get;
 
  $loop->run;
 
@@ -512,6 +506,38 @@ earlier example:
        path     => "echo.sock",
     },
     ...
+ );
+
+=head2 Using A Kernel-Assigned Port Number
+
+Rather than picking a specific port number, is it possible to ask the kernel
+to assign one arbitrarily that is currently free. This can be done by
+requesting port number 0 (which is actually the default if no port number is
+otherwise specified). To determine which port number the kernel actually
+picked, inspect the C<sockport> accessor on the actual socket filehandle.
+
+Either use the L<Future> returned by the C<listen> method:
+
+ $listener->listen(
+    addr => { family => "inet" },
+ )->on_done( sub {
+    my ( $listener ) = @_;
+    my $socket = $listener->read_handle;
+
+    say "Now listening on port ", $socket->sockport;
+ });
+
+Or pass an C<on_listen> continuation:
+
+ $listener->listen(
+    addr => { family => "inet" },
+
+    on_listen => sub {
+       my ( $listener ) = @_;
+       my $socket = $listener->read_handle;
+
+       say "Now listening on port ", $socket->sockport;
+    },
  );
 
 =head1 AUTHOR

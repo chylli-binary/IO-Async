@@ -59,9 +59,11 @@ $listener->listen(
    socktype => 'stream',
    family   => $FAMILY,
    v6only   => $V6ONLY,
+)->on_done( sub {
+   my ( $listener ) = @_;
+   my $socket = $listener->read_handle;
 
-   on_resolve_error => sub { die "Cannot resolve - $_[0]\n"; },
-   on_listen_error  => sub { die "Cannot listen\n"; },
-);
+   printf STDERR "Listening on %s:%d\n", $socket->sockhost, $socket->sockport;
+})->get;
 
 $loop->run;

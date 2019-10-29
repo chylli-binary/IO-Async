@@ -13,20 +13,11 @@ my $PORT = shift @ARGV or die "Need PORT";
 
 my $loop = IO::Async::Loop->new;
 
-my $socket;
-
-$loop->connect(
+my $socket = $loop->connect(
    host     => $HOST,
    service  => $PORT,
    socktype => 'stream',
-
-   on_connected => sub { $socket = shift },
-
-   on_resolve_error => sub { die "Cannot resolve - $_[0]\n" },
-   on_connect_error => sub { die "Cannot connect\n" },
-);
-
-$loop->loop_once until defined $socket;
+)->get;
 
 # $socket is just an IO::Socket reference
 my $peeraddr = $socket->peerhost . ":" . $socket->peerport;

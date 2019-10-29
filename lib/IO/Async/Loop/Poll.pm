@@ -8,7 +8,7 @@ package IO::Async::Loop::Poll;
 use strict;
 use warnings;
 
-our $VERSION = '0.66';
+our $VERSION = '0.67';
 use constant API_VERSION => '0.49';
 
 use base qw( IO::Async::Loop );
@@ -292,8 +292,12 @@ sub watch_io
 
    return if $mask == $curmask;
 
-   $poll ? $poll->mask( $handle, $mask )
-         : ( $self->{pollmask}{$fileno} = $mask );
+   if( $poll ) {
+      $poll->mask( $handle, $mask );
+   }
+   else {
+      $self->{pollmask}{$fileno} = $mask;
+   }
 }
 
 sub unwatch_io
@@ -328,8 +332,13 @@ sub unwatch_io
 
    return if $mask == $curmask;
 
-   $poll ? $poll->mask( $handle, $mask )
-         : ( $self->{pollmask}{$fileno} = $mask );
+   if( $poll ) {
+      $poll->mask( $handle, $mask );
+   }
+   else {
+      $mask ? ( $self->{pollmask}{$fileno} = $mask )
+            : ( delete $self->{pollmask}{$fileno} );
+   }
 }
 
 =head1 AUTHOR

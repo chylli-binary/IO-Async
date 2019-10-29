@@ -1,5 +1,17 @@
 Revision history for IO-Async
 
+0.67    2015/06/01 15:06:13
+        [CHANGES]
+         * Add a ->post_fork method to IO::Async::Loop in case subclasses
+           should take specific action (RT104130)
+         * Remove IO::Async::MergePoint entirely
+         * Add debug_printf() calls to IO::Async::Process
+         * Various documentation additions
+
+        [BUGFIXES]
+         * Remember to actually delete unused filehandles from the pollmask
+           (RT103922)
+
 0.66    2015/04/17 20:36:39
         [CHANGES]
          * Created IO::Async::Debug

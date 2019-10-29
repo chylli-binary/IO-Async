@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use 5.010;
 
-our $VERSION = '0.66';
+our $VERSION = '0.67';
 
 # When editing this value don't forget to update the docs below
 use constant NEED_API_VERSION => '0.33';
@@ -556,6 +556,25 @@ sub loop_stop
 {
    my $self = shift;
    $self->stop;
+}
+
+=head2 $loop->post_fork
+
+The base implementation of this method does nothing. It is provided in case
+some Loop subclasses should take special measures after a C<fork()> system
+call if the main body of the program should survive in both running processes.
+
+This may be required, for example, in a long-running server daemon that forks
+multiple copies on startup after opening initial listening sockets. A loop
+implementation that uses some in-kernel resource that becomes shared after
+forking (for example, a Linux C<epoll> or a BSD C<kqueue> filehandle) would
+need recreating in the new child process before the program can continue.
+
+=cut
+
+sub post_fork
+{
+   # empty
 }
 
 ###########

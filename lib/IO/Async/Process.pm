@@ -1,7 +1,7 @@
 #  You may distribute under the terms of either the GNU General Public License
 #  or the Artistic License (the same terms as Perl itself)
 #
-#  (C) Paul Evans, 2011-2013 -- leonerd@leonerd.org.uk
+#  (C) Paul Evans, 2011-2015 -- leonerd@leonerd.org.uk
 
 package IO::Async::Process;
 
@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use base qw( IO::Async::Notifier );
 
-our $VERSION = '0.66';
+our $VERSION = '0.67';
 
 use Carp;
 
@@ -41,11 +41,11 @@ C<IO::Async::Process> - start and manage a child process
           while( $$buffref =~ s/^(.*)\n// ) {
              print "Rot13 of 'hello world' is '$1'\n";
           }
-          
+
           return 0;
        },
     },
-    
+
     on_finish => sub {
        $loop->stop;
     },
@@ -78,7 +78,8 @@ all its file descriptors.
 
 Invoked when the process exits by an exception from C<code>, or by failing to
 C<exec(2)> the given command. C<$errno> will be a dualvar, containing both
-number and string values.
+number and string values. After a successful C<exec()> call, this condition
+can no longer happen.
 
 Note that this has a different name and a different argument order from
 C<< Loop->open_child >>'s C<on_error>.
@@ -486,10 +487,12 @@ sub _add_to_loop
 
       setup => \@setup,
 
-      on_exit => sub {
-         ( undef, $exitcode, $dollarbang, $dollarat ) = @_;
+      on_exit => $self->_capture_weakself( sub {
+         ( my $self, undef, $exitcode, $dollarbang, $dollarat ) = @_;
+
+         $self->debug_printf( "EXIT status=0x%04x", $exitcode ) if $self;
          $exit_future->done unless $exit_future->is_cancelled;
-      },
+      } ),
    );
    $self->{running} = 1;
 
