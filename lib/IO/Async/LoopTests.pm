@@ -22,9 +22,10 @@ use IO::Async::Test qw();
 use IO::File;
 use Fcntl qw( SEEK_SET );
 use POSIX qw( SIGTERM WIFEXITED WEXITSTATUS WIFSIGNALED WTERMSIG );
+use Socket qw( sockaddr_family AF_UNIX );
 use Time::HiRes qw( time );
 
-our $VERSION = '0.46';
+our $VERSION = '0.47';
 
 # Abstract Units of Time
 use constant AUT => $ENV{TEST_QUICK_TIMERS} ? 0.1 : 1;
@@ -84,7 +85,7 @@ sub run_tests
    my ( $testclass, @tests ) = @_;
 
    my $count = 0;
-   $count += __PACKAGE__->can( "count_tests_$_" )->() + 3 for @tests;
+   $count += __PACKAGE__->can( "count_tests_$_" )->() + 4 for @tests;
 
    plan tests => $count;
 
@@ -97,6 +98,8 @@ sub run_tests
 
    foreach my $test ( @tests ) {
       $loop = $testclass->new;
+
+      isa_ok( $loop, $testclass, '$loop' );
 
       is( IO::Async::Loop->new, $loop, 'magic constructor yields $loop' );
 
@@ -251,25 +254,29 @@ sub run_tests_io
    SKIP: {
       $loop->_CAN_ON_HANGUP or skip "Loop cannot watch_io for on_hangup", 2;
 
-      my ( $S1, $S2 ) = $loop->socketpair or die "Cannot socketpair - $!";
-      $_->blocking( 0 ) for $S1, $S2;
+      SKIP: {
+         my ( $S1, $S2 ) = $loop->socketpair or die "Cannot socketpair - $!";
+         $_->blocking( 0 ) for $S1, $S2;
 
-      my $hangup = 0;
-      $loop->watch_io(
-         handle => $S1,
-         on_hangup => sub { $hangup = 1 },
-      );
+         sockaddr_family( $S1->sockname ) == AF_UNIX or skip "Cannot reliably detect hangup condition on non AF_UNIX sockets", 1;
 
-      $S2->close;
+         my $hangup = 0;
+         $loop->watch_io(
+            handle => $S1,
+            on_hangup => sub { $hangup = 1 },
+         );
 
-      $loop->loop_once( 0.1 );
+         $S2->close;
 
-      is( $hangup, 1, '$hangup after socket close' );
+         $loop->loop_once( 0.1 );
+
+         is( $hangup, 1, '$hangup after socket close' );
+      }
 
       my ( $Prd, $Pwr ) = $loop->pipepair or die "Cannot pipepair - $!";
       $_->blocking( 0 ) for $Prd, $Pwr;
 
-      $hangup = 0;
+      my $hangup = 0;
       $loop->watch_io(
          handle => $Pwr,
          on_hangup => sub { $hangup = 1 },
@@ -637,16 +644,44 @@ sub run_tests_child
 
 =head2 control
 
-Tests that the C<loop_once> and C<loop_forever> methods behave correctly
+Tests that the C<run>, C<stop>, C<loop_once> and C<loop_forever> methods
+behave correctly
 
 =cut
 
-use constant count_tests_control => 5;
+use constant count_tests_control => 8;
 sub run_tests_control
 {
    time_between { $loop->loop_once( 0 ) } 0, 0.1, 'loop_once(0) when idle';
 
    time_between { $loop->loop_once( 2 * AUT ) } 1.5, 2.5, 'loop_once(2) when idle';
+
+   $loop->enqueue_timer( delay => 0.1, code => sub { $loop->stop( result => "here" ) } );
+
+   local $SIG{ALRM} = sub { die "Test timed out before ->stop" };
+   alarm( 1 );
+
+   my @result = $loop->run;
+
+   alarm( 0 );
+
+   is_deeply( \@result, [ result => "here" ], '->stop arguments returned by ->run' );
+
+   $loop->enqueue_timer( delay => 0.1, code => sub { $loop->stop( result => "here" ) } );
+
+   my $result = $loop->run;
+
+   is( $result, "result", 'First ->stop argument returned by ->run in scalar context' );
+
+   $loop->enqueue_timer( delay => 0.1, code => sub {
+      $loop->enqueue_timer( delay => 0.1, code => sub { $loop->stop( "inner" ) } );
+      my @result = $loop->run;
+      $loop->stop( @result, "outer" );
+   } );
+
+   @result = $loop->run;
+
+   is_deeply( \@result, [ "inner", "outer" ], '->run can be nested properly' );
 
    $loop->enqueue_timer( delay => 0.1, code => sub { $loop->loop_stop } );
 

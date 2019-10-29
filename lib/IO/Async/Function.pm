@@ -8,7 +8,7 @@ package IO::Async::Function;
 use strict;
 use warnings;
 
-our $VERSION = '0.46';
+our $VERSION = '0.47';
 
 use base qw( IO::Async::Notifier );
 use IO::Async::Timer::Countdown;
@@ -48,7 +48,7 @@ C<IO::Async::Function> - call a function asynchronously
     },
  );
 
- $loop->loop_forever;
+ $loop->run;
 
 =head1 DESCRIPTION
 

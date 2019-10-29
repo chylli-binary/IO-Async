@@ -8,7 +8,7 @@ package IO::Async::FileStream;
 use strict;
 use warnings;
 
-our $VERSION = '0.46';
+our $VERSION = '0.47';
 
 use base qw( IO::Async::Stream );
 
@@ -52,7 +52,7 @@ C<IO::Async::FileStream> - read the tail of a file
 
  $loop->add( $filestream );
 
- $loop->loop_forever;
+ $loop->run;
 
 =head1 DESCRIPTION
 

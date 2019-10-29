@@ -9,7 +9,7 @@ use strict;
 use warnings;
 use base qw( IO::Async::Function );
 
-our $VERSION = '0.46';
+our $VERSION = '0.47';
 
 use Socket 1.93 qw(
    AI_NUMERICHOST AI_PASSIVE
@@ -76,7 +76,7 @@ This object is used indirectly via an C<IO::Async::Loop>:
     },
  );
 
- $loop->loop_forever;
+ $loop->run;
 
 =head1 DESCRIPTION
 
@@ -280,6 +280,9 @@ sub getaddrinfo
    $args{family}   = _getfamilybyname( $args{family} )     if defined $args{family};
    $args{socktype} = _getsocktypebyname( $args{socktype} ) if defined $args{socktype};
 
+   # Clear any other existing but undefined hints
+   defined $args{$_} or delete $args{$_} for keys %args;
+
    # It's likely this will succeed with AI_NUMERICHOST if host contains only
    # [\d.] (IPv4) or [[:xdigit:]:] (IPv6)
    # Technically we should pass AI_NUMERICSERV but not all platforms support
@@ -287,7 +290,7 @@ sub getaddrinfo
 
    # These address tests don't have to be perfect as if it fails we'll get
    # EAI_NONAME and just try it asynchronously anyway
-   if( ( $host =~ m/^[\d.]+$/ or $host =~ m/^[[:xdigit:]:]$/ ) and
+   if( ( $host =~ m/^[\d.]+$/ or $host =~ m/^[[:xdigit:]:]$/ or $host eq "" ) and
        $service =~ m/^\d+$/ ) {
 
        my ( $err, @results ) = _getaddrinfo( $host, $service,
@@ -309,8 +312,12 @@ sub getaddrinfo
 
    $self->resolve(
       type    => "getaddrinfo_hash",
-      # I really want hash slices
-      data    => [ map { exists $args{$_} ? ( $_ => $args{$_} ) : () } qw( host service family socktype protocol flags ) ],
+      data    => [
+         host    => $host,
+         service => $service,
+         flags   => $flags,
+         map { exists $args{$_} ? ( $_ => $args{$_} ) : () } qw( family socktype protocol ),
+      ],
       timeout => $args{timeout},
       on_resolved => $args{on_resolved},
       on_error    => $args{on_error},
@@ -530,6 +537,9 @@ register_resolver getaddrinfo_hash => sub {
 
    $args{family}   = _getfamilybyname( $args{family} )     if defined $args{family};
    $args{socktype} = _getsocktypebyname( $args{socktype} ) if defined $args{socktype};
+
+   # Clear any other existing but undefined hints
+   defined $args{$_} or delete $args{$_} for keys %args;
 
    my ( $err, @addrs ) = _getaddrinfo( $host, $service, \%args );
 

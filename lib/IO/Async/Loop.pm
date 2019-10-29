@@ -8,13 +8,15 @@ package IO::Async::Loop;
 use strict;
 use warnings;
 
-our $VERSION = '0.46';
+our $VERSION = '0.47';
 
 # When editing this value don't forget to update the docs below
 use constant NEED_API_VERSION => '0.33';
 
 # Base value but some classes might override
 use constant _CAN_ON_HANGUP => 0;
+
+use constant HAVE_MSWIN32 => ( $^O eq "MSWin32" );
 
 use Carp;
 
@@ -78,7 +80,7 @@ C<IO::Async::Loop> - core loop of the C<IO::Async> framework
     },
  ) );
 
- $loop->loop_forever;
+ $loop->run;
 
 =head1 DESCRIPTION
 
@@ -400,38 +402,75 @@ sub loop_once
    croak "Expected that $self overrides ->loop_once";
 }
 
+=head2 @result = $loop->run
+
+=head2 $result = $loop->run
+
+Runs the actual IO event loop. This method blocks until the C<stop> method is
+called, and returns the result that was passed to C<stop>. In scalar context
+only the first result is returned; the others will be discarded if more than
+one value was provided. This method may be called recursively.
+
+This method is a recent addition and may not be supported by all the
+C<IO::Async::Loop> subclasses currently available on CPAN.
+
+=cut
+
+sub run
+{
+   my $self = shift;
+
+   local $self->{running} = 1;
+   local $self->{result} = [];
+
+   while( $self->{running} ) {
+      $self->loop_once( undef );
+   }
+
+   return wantarray ? @{ $self->{result} } : $self->{result}[0];
+}
+
+=head2 $loop->stop( @result )
+
+Stops the inner-most C<run> method currently in progress, causing it to return
+the given C<@result>.
+
+This method is a recent addition and may not be supported by all the
+C<IO::Async::Loop> subclasses currently available on CPAN.
+
+=cut
+
+sub stop
+{
+   my $self = shift;
+
+   @{ $self->{result} } = @_;
+   undef $self->{running};
+}
+
 =head2 $loop->loop_forever
 
-This method repeatedly calls the C<loop_once> method with no timeout (i.e.
-allowing the underlying mechanism to block indefinitely), until the
-C<loop_stop> method is called from an event callback.
+A synonym for C<run>, though this method does not return a result.
 
 =cut
 
 sub loop_forever
 {
    my $self = shift;
-
-   $self->{still_looping} = 1;
-
-   while( $self->{still_looping} ) {
-      $self->loop_once( undef );
-   }
+   $self->run;
+   return;
 }
 
 =head2 $loop->loop_stop
 
-This method cancels a running C<loop_forever>, and makes that method return.
-It would be called from an event callback triggered by an event that occured
-within the loop.
+A synonym for C<stop>, though this method does not pass any results.
 
 =cut
 
 sub loop_stop
 {
    my $self = shift;
-   
-   $self->{still_looping} = 0;
+   $self->stop;
 }
 
 ############
@@ -1156,6 +1195,65 @@ sub socketpair
    return ( $S1, $S2 );
 }
 
+# TODO: Move this into its own file, have it loaded dynamically via $^O
+if( HAVE_MSWIN32 ) {
+   # Win32 doesn't have a socketpair(). We'll fake one up
+
+   undef *socketpair;
+   *socketpair = sub {
+      my $self = shift;
+      my ( $family, $socktype, $proto ) = @_;
+
+      $family = _getfamilybyname( $family ) || AF_INET;
+
+      # SOCK_STREAM is the most likely
+      $socktype = _getsocktypebyname( $socktype ) || SOCK_STREAM;
+
+      $proto ||= 0;
+
+      if( $socktype == SOCK_STREAM ) {
+         my $listener = IO::Socket::INET->new(
+            LocalAddr => "127.0.0.1",
+            LocalPort => 0,
+            Listen    => 1,
+            Blocking  => 0,
+         ) or croak "Cannot socket() - $!";
+
+         my $S1 = IO::Socket::INET->new(
+            PeerAddr => $listener->sockhost,
+            PeerPort => $listener->sockport
+         ) or croak "Cannot socket() again - $!";
+
+         my $S2 = $listener->accept or croak "Cannot accept() - $!";
+
+         $listener->close;
+
+         return ( $S1, $S2 );
+      }
+      elsif( $socktype == SOCK_DGRAM ) {
+         my $S1 = IO::Socket::INET->new(
+            LocalAddr => "127.0.0.1",
+            Type      => SOCK_DGRAM,
+            Proto     => "udp",
+         ) or croak "Cannot socket() - $!";
+         
+         my $S2 = IO::Socket::INET->new(
+            LocalAddr => "127.0.0.1",
+            Type      => SOCK_DGRAM,
+            Proto     => "udp",
+         ) or croak "Cannot socket() again - $!";
+
+         $S1->connect( $S2->sockname );
+         $S2->connect( $S1->sockname );
+
+         return ( $S1, $S2 );
+      }
+      else {
+         croak "Unrecognised socktype $socktype";
+      }
+   };
+}
+
 =head2 ( $rd, $wr ) = $loop->pipepair
 
 An abstraction of the C<pipe(2)> syscall, which returns the two new handles.
@@ -1404,9 +1502,6 @@ sub _extract_addrinfo_unix
 =pod
 
 =back
-
-This method used to be called C<unpack_addrinfo>. A backward compatibility
-wrapper is provided temporarily, but will be removed in a later version.
 
 =cut
 
