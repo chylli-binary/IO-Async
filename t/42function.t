@@ -66,6 +66,10 @@ testing_loop( $loop );
    is( $function->workers_busy, 0, '$function has 0 workers busy after call returns' );
    is( $function->workers_idle, 1, '$function has 1 workers idle after call returns' );
 
+   # ->stop future
+   wait_for_future my $stop_f = $function->stop;
+   ok( !$stop_f->failure, '$stop_f succeeds' );
+
    $loop->remove( $function );
 }
 
@@ -517,6 +521,28 @@ SKIP: {
    is( $result, 2, 'call before restart still returns result' );
 
    $loop->remove( $function );
+}
+
+# exit by POSIX::_exit
+{
+   # We can't easily turn this into an assertion test, but if the required
+   # behaviour doesn't hold then the test script will be killed early and
+   # prove will notice this.
+
+   my $testpid = $$;
+   END { kill $testpid if defined $testpid and $testpid != $$ }
+
+   my $function = IO::Async::Function->new(
+      code => sub {},
+   );
+
+   $loop->add( $function );
+
+   $function->call( args => [] )->get;
+
+   $function->stop;
+
+   undef $testpid;
 }
 
 # max_worker_calls

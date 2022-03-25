@@ -4,4 +4,4 @@ use strict;
 use warnings;
 
 use IO::Async::LoopTests;
-run_tests( 'IO::Async::Loop::Select', 'child' );
+run_tests( 'IO::Async::Loop::Select', 'process' );
